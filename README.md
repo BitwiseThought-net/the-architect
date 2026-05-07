@@ -20,7 +20,7 @@ By orchestrating a team of specialized agents—including a Librarian for dynami
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/BitwiseThought-net/agent-smith.git
-   cd smith-agent-stack
+   cd agent-smith
    ```
 2. **Configure your environment:**
    Create a `.env` file in the root directory:
