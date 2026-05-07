@@ -1,0 +1,55 @@
+services:
+  ollama:
+    container_name: AI-ollama
+    image: ollama/ollama:latest
+    restart: always
+    ports:
+      - "11434:11434"
+    env_file:
+      - .env
+    volumes:
+      - ./ollama:/root/.ollama
+    # This auto-pulls the model on startup if it doesn't exist (Uses ${MODEL_NAME} from .env)
+    entrypoint: /bin/sh -c "ollama serve & sleep 5 && ollama pull ${MODEL_NAME} && wait"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  litellm:
+    container_name: AI-litellm
+    image: ghcr.io/berriai/litellm:main-latest
+    restart: always
+    ports:
+      - "${LITELLM_PORT}:4000"
+    environment:
+      # Tells LiteLLM to point to the ollama container service name
+      - OLLAMA_API_BASE=http://ollama:11434
+    env_file:
+      - .env
+    # Tells LiteLLM which model to proxy based on your .env
+    command: ["--model", "ollama/${MODEL_NAME}", "--port", "4000", "--drop_params"]
+    depends_on:
+      - ollama
+
+  openwebui:
+    container_name: AI-open-webui
+    image: ghcr.io/open-webui/open-webui:main
+    restart: always
+    ports:
+      - "${UI_PORT}:8080"
+    volumes:
+      - ./open-webui:/app/backend/data
+    environment:
+      - "WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}"
+      - "ENABLE_SIGNUP=${ENABLE_SIGNUP}"
+      - "OLLAMA_BASE_URL=http://ollama:11434"
+      - "OPENAI_API_BASE_URL=http://litellm:4000/v1"
+      - "OPENAI_API_KEY=sk-1234"
+    env_file:
+      - .env
+    depends_on:
+      - ollama
