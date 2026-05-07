@@ -94,6 +94,47 @@ The `config.json` file is your mission control. It defines which agents are acti
 }
 ```
 
+## 🛡️ Security Architecture: Safe Mode vs. Standard Mode
+
+The Smith Stack features a parallel tool and agent architecture, allowing you to toggle between "Sandboxed" and "Full Access" modes via `config.json`.
+
+### Hardened Tools (`tools/`)
+- **`file_write_safe.py`**: Restricts all file operations strictly to the `/app/output` directory.
+- **`terminal_safe.py`**: A hardened execution environment that only permits `python` and `pytest` commands, blocking path traversal (`..`) and absolute paths.
+- **`auditor_safe.py`**: A specialized persona that enforces directory boundaries and "Zero Trust" pathing.
+
+## 📚 Autonomous Knowledge Ingestion
+
+The system now features a **"Zero-Maintenance" RAG pipeline**:
+- **Dynamic Loaders**: Drop any file into `/knowledge`. The system automatically maps it to a corresponding loader in `loaders/` based on extension (e.g., `.yaml`, `.soap`, `.xlsx`, `.md`).
+- **Librarian Integration**: Including the `librarian` agent in your `active_agents` list triggers an automatic knowledge refresh pass (`crew.train()`) to ensure the team is working with the most recent data.
+
+## 🚨 Notifications & Human-in-the-Loop (HITL)
+
+> "I hate this place... This reality... I can taste your stink and every time I do, I fear that I've somehow been infected by it."
+
+Stay informed even when the terminal is out of sight:
+- **Proactive Alerting**: Agents assigned the `notifier` tool will ping your Slack or Discord webhook when they reach a checkpoint.
+- **Manual Intervention**: Set `"human_approval": true` in `config.json` to pause the mission for manual feedback or correction via the terminal.
+
+## 📦 Updated Dependencies
+To support advanced document parsing and notifications, ensure your `requirements.txt` includes:
+```text
+crewai[docling]   # For .md, .docx, .pptx, .html
+pandas            # For tabular data (.csv, .xlsx)
+requests          # For Slack/Discord webhooks
+pyyaml            # For .yaml configurations
+```
+
+## 👥 Expanded Agent Roster (`agents/`)
+
+You can now orchestrate a full software development lifecycle team:
+- **Librarian**: The data gatekeeper. Refreshes the ChromaDB index before missions start.
+- **Solution Architect**: Designs modular patterns and system logic.
+- **QA Engineer**: Writes and executes `pytest` suites using the Safe Terminal.
+- **Technical Writer**: Generates professional documentation and README updates.
+- **Project Manager**: Coordinates handoffs and ensures mission goals are met.
+
 ## 🛠️ Developing New Agents
 
 > "Everything that has a beginning, has an end, Neo."
