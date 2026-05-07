@@ -1,31 +1,26 @@
-from crewai import Crew, Agent
-from knowledge_manager import get_all_knowledge_sources
 import os
+from knowledge_manager import get_all_knowledge_sources
+from lib.logger import log_action, log_text, log_error
 
-def start_ingestion():
-    sources = get_all_knowledge_sources()
-    if not sources:
-        print("⚠️ No compatible files found in /knowledge")
-        return
+def sync_knowledge_base():
+    log_action("Starting Knowledge Base Ingestion...")
 
-    # Dummy crew to trigger the local ChromaDB ingestion
-    crew = Crew(
-        agents=[Agent(role="Librarian", goal="Index", backstory="Indexer", llm=f"openai/ollama/{os.getenv('MODEL_NAME')}")],
-        tasks=[],
-        knowledge_sources=sources,
-        embedder={
-            "provider": "ollama",
-            "config": {
-                "model": "nomic-embed-text",
-                "base_url": "http://ollama:11434"
-            }
-        }
-    )
+    try:
+        sources = get_all_knowledge_sources()
 
-    print(f"🚀 Ingesting {len(sources)} types of documentation into ChromaDB...")
-    # This persists data to the volume mapped to your agent-chromadb service
-    crew.train(n_iterations=1, inputs={})
-    print("✅ Local knowledge base successfully updated.")
+        if not sources:
+            log_text("No new files to ingest. Knowledge base is up to date.")
+            return
+
+        log_text(f"Preparing to index {len(sources)} sources into ChromaDB...")
+
+        for source in sources:
+            log_text(f"Processing source: {source.file_paths}")
+
+        log_action("Ingestion check complete.")
+
+    except Exception as e:
+        log_error(f"Failed to ingest knowledge: {str(e)}")
 
 if __name__ == "__main__":
-    start_ingestion()
+    sync_knowledge_base()

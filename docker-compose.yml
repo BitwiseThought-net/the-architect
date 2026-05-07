@@ -59,7 +59,7 @@ services:
     depends_on:
       - ollama
 
-  agent-service:
+  service:
     container_name: agent-smith
     build:
       context: ./agent-app
@@ -72,13 +72,14 @@ services:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
       - OPENAI_API_BASE=${LITELLM_BASE_URL}
       - CHROMA_API_BASE=http://chromadb:8000
       - CREWAI_STORAGE_DIR=/app/.crewai
-    command: python -u main.py
     depends_on:
       - litellm
       - chromadb
+    command: ["python", "-u", "main.py"]
 
 volumes:
   agent-memory:

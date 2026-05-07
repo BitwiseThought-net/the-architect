@@ -3,6 +3,9 @@ crewai-tools
 langchain_openai
 chromadb
 duckduckgo-search
+crewai[litellm]
+ollama
+pydantic>=2.4.2
 pypdf            # For pdf
 crewai[docling]  # For md, docx, pptx, html, png, jpg
 openpyxl         # For xlsx

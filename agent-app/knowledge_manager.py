@@ -1,37 +1,52 @@
 import os
 import importlib
-
-KNOWLEDGE_DIR = "knowledge"
-LOADERS_PKG = "loaders"
+from lib.logger import log_action, log_text, log_warn, log_error
 
 def get_all_knowledge_sources():
-    # Group files by extension: { 'pdf': ['.../a.pdf'], 'txt': ['.../b.txt'] }
-    files_by_ext = {}
-
-    if not os.path.exists(KNOWLEDGE_DIR):
-        os.makedirs(KNOWLEDGE_DIR)
-
-    for filename in os.listdir(KNOWLEDGE_DIR):
-        name, ext = os.path.splitext(filename)
-        if not ext:
-            continue
-
-        # Normalize: '.PDF' -> 'pdf', '.txt' -> 'txt'
-        ext_clean = ext.lower().replace('.', '')
-        path = os.path.join(KNOWLEDGE_DIR, filename)
-
-        files_by_ext.setdefault(ext_clean, []).append(path)
-
+    knowledge_dir = "knowledge"
+    loaders_dir = "loaders"
     sources = []
-    for ext, paths in files_by_ext.items():
-        try:
-            # Dynamically look for loaders/pdf.py, loaders/txt.py, etc.
-            module = importlib.import_module(f"{LOADERS_PKG}.{ext}")
-            sources.append(module.get_source(file_paths=paths))
-            print(f"✅ Loaded {len(paths)} files using {ext}.py loader")
-        except ImportError:
-            # If no loader exists for that extension, we just skip it
-            print(f"⚠️  No loader found for '.{ext}' (checked {LOADERS_PKG}/{ext}.py)")
+
+    if not os.path.exists(knowledge_dir):
+        log_warn(f"Knowledge directory '{knowledge_dir}' not found. Creating it...")
+        os.makedirs(knowledge_dir)
+        return sources
+
+    log_action("Scanning /knowledge directory for new sources...")
+
+    files = os.listdir(knowledge_dir)
+    if not files:
+        log_text("No files found in /knowledge.")
+        return sources
+
+    for file in files:
+        file_path = os.path.join(knowledge_dir, file)
+        # Extract extension (e.g., '.pdf' -> 'pdf')
+        ext = os.path.splitext(file).lower().replace('.', '')
+
+        if not ext:
+            log_warn(f"Skipping file with no extension: {file}")
             continue
 
+        try:
+            # Dynamically import the loader matching the extension
+            loader_module_name = f"loaders.{ext}"
+            loader_module = importlib.import_module(loader_module_name)
+
+            # Assumes every loader has a get_source(file_path) function
+            source = loader_module.get_source(file_path)
+
+            if source:
+                sources.append(source)
+                log_text(f"Successfully loaded {file} using '{ext}' loader.")
+            else:
+                log_warn(f"Loader '{ext}' returned no source for {file}.")
+
+        except ImportError:
+            log_warn(f"No custom loader found for '.{ext}' files. Missing {loaders_dir}/{ext}.py")
+        except Exception as e:
+            log_error(f"Error loading {file} with '{ext}' loader: {str(e)}")
+
+    log_text(f"Total knowledge sources identified: {len(sources)}")
+    log_action("Knowledge sync complete.")
     return sources
