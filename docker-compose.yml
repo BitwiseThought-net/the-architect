@@ -64,7 +64,7 @@ services:
     container_name: agent-smith
     build:
       context: ./agent-app
-    command: python -u main.py
+    command: python -u agent-app/main.py
     stdin_open: true # Required for Human-in-the-Loop input
     tty: true        # Required for Human-in-the-Loop input
     volumes:
