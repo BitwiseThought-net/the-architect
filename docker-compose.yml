@@ -69,12 +69,12 @@ services:
     tty: true        # Required for Human-in-the-Loop input
     volumes:
 #      - ./agent-app:/app
-      - agent-memory:/app/.crewai
+      - agent-memory:/app/agent-app/.crewai
     environment:
       - PYTHONUNBUFFERED=1 # Ensures real-time log output
       - OPENAI_API_BASE=${LITELLM_BASE_URL}
       - CHROMA_API_BASE=http://chromadb:8000
-      - CREWAI_STORAGE_DIR=/app/.crewai
+      - CREWAI_STORAGE_DIR=/app/agent-app/.crewai
     env_file:
       - .env
     depends_on:
