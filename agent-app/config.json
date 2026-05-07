@@ -1,0 +1,30 @@
+{
+  "mission_name": "Full Ingestion and Research Mission",
+  "active_agents": [
+    {
+      "name": "librarian",
+      "task_description": "Scan the knowledge directory and prepare the index.",
+      "expected_output": "A report confirming the number of files indexed."
+    },
+    {
+      "name": "researcher",
+      "tools": ["search_duckduckgo"],
+      "task_description": "Using the newly indexed docs, summarize our project architecture.",
+      "expected_output": "An architecture summary."
+    },
+    {
+      "name": "auditor_safe",
+      "tools": ["search_duckduckgo", "notifier"],
+      "human_approval": true,
+      "task_description": "Review the researcher's output. Confirm the code is safe and the filename is appropriate for the '/app/output' folder.",
+      "expected_output": "An approval message or a list of required security changes."
+    },
+    {
+      "name": "coder",
+      "tools": ["file_read", "file_write"],
+      "human_approval": true,
+      "task_description": "Write the approved script to the output folder. Ensure you use a relative path like 'health_check.py'.",
+      "expected_output": "Success message confirming the file is saved in the output directory."
+    }
+  ]
+}

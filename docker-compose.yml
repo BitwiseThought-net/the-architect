@@ -1,6 +1,6 @@
 services:
   ollama:
-    container_name: AI-ollama
+    container_name: agent-ollama
     image: ollama/ollama:latest
     restart: always
     ports:
@@ -9,8 +9,8 @@ services:
       - .env
     volumes:
       - ./ollama:/root/.ollama
-    # This auto-pulls the model on startup if it doesn't exist (Uses ${MODEL_NAME} from .env)
-    entrypoint: /bin/sh -c "ollama serve & sleep 5 && ollama pull ${MODEL_NAME} && wait"
+    # Updated to pull both the main LLM and the embedding model for ChromaDB
+    entrypoint: /bin/sh -c "ollama serve & sleep 5 && ollama pull ${MODEL_NAME} && ollama pull nomic-embed-text && wait"
     deploy:
       resources:
         reservations:
@@ -20,23 +20,33 @@ services:
               capabilities: [gpu]
 
   litellm:
-    container_name: AI-litellm
+    container_name: agent-litellm
     image: ghcr.io/berriai/litellm:main-latest
     restart: always
     ports:
       - "${LITELLM_PORT}:4000"
     environment:
-      # Tells LiteLLM to point to the ollama container service name
       - OLLAMA_API_BASE=http://ollama:11434
     env_file:
       - .env
-    # Tells LiteLLM which model to proxy based on your .env
     command: ["--model", "ollama/${MODEL_NAME}", "--port", "4000", "--drop_params"]
     depends_on:
       - ollama
 
+  chromadb:
+    container_name: agent-chromadb
+    image: chromadb/chroma:latest
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./chroma-data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+
   openwebui:
-    container_name: AI-open-webui
+    container_name: agent-open-webui
     image: ghcr.io/open-webui/open-webui:main
     restart: always
     ports:
@@ -53,3 +63,24 @@ services:
       - .env
     depends_on:
       - ollama
+
+  agent-service:
+    container_name: agent-smith
+    build:
+      context: ./agent-app
+    volumes:
+      - ./agent-app:/app
+      - agent-memory:/app/.crewai
+    environment:
+      - OPENAI_API_BASE=http://litellm:4000/v1
+      - OPENAI_API_KEY=local-agent-key
+      - CHROMA_API_BASE=http://chromadb:8000
+      - MODEL_NAME=${MODEL_NAME}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CREWAI_STORAGE_DIR=/app/.crewai
+    depends_on:
+      - litellm
+      - chromadb
+
+volumes:
+  agent-memory:

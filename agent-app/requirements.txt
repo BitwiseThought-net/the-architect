@@ -1,0 +1,12 @@
+crewai
+crewai-tools
+langchain_openai
+chromadb
+duckduckgo-search
+pypdf            # For pdf
+crewai[docling]  # For md, docx, pptx, html, png, jpg
+openpyxl         # For xlsx
+pyyaml           # Helps with YAML parsing
+openpyxl         # Required for Excel (.xlsx)
+pandas           # For csv, tsv, json
+odfpy            # For ods (OpenDocument Spreadsheets)
