@@ -19,15 +19,14 @@ def load_agent_and_tools(agent_config):
     try:
         agent_module = importlib.import_module(f"agents.{agent_config['name']}")
         return agent_module.get_agent(tools=all_tools)
-    except ImportError:
-        log_error(f"Agent {agent_config['name']} not found.")
+    except Exception as e:
+        log_error(f"Agent {agent_config['name']} loading failed: {e}")
         return None
 
 def run_mission():
-    # --- STEP 1: WAIT FOR MODEL READINESS ---
     model_name = os.getenv("MODEL_NAME", "qwen3.6:latest")
     log_action(f"Verifying {model_name} is fully pulled in LiteLLM...")
-    
+
     start_time = time.time()
     while True:
         try:
@@ -39,7 +38,7 @@ def run_mission():
                     break
         except Exception:
             pass
-        
+
         if time.time() - start_time > 600:
             log_error(f"Timeout: {model_name} did not become ready in time.")
             return
@@ -47,7 +46,6 @@ def run_mission():
         log_text(f"Still waiting for {model_name} to finish pulling...")
         time.sleep(15)
 
-    # --- STEP 2: DEFINE STABLE LLM ---
     custom_llm = LLM(
         model=f"ollama/{model_name}",
         base_url="http://agent-litellm:4000/v1",
@@ -71,7 +69,7 @@ def run_mission():
             agents_list.append(agent)
             if item['name'] == "librarian":
                 has_librarian = True
-            
+
             tasks_list.append(Task(
                 description=item.get('task_description'),
                 expected_output=item.get('expected_output'),
@@ -84,7 +82,7 @@ def run_mission():
         tasks=tasks_list,
         process=Process.sequential,
         verbose=True,
-        memory=True, 
+        memory=True,
         knowledge_sources=knowledge_sources
     )
 
@@ -95,12 +93,15 @@ def run_mission():
                 crew.train(n_iterations=1, filename="training_data.pkl", inputs={})
                 log_text("Knowledge base synchronized via training.")
             else:
-                log_text("No knowledge sources to train on.")
+                log_text("No knowledge sources found to train on.")
         except Exception as e:
-            log_warn(f"Training loop skipped: {e}. Proceeding to kickoff.")
+            log_warn(f"Training loop skipped: {e}")
 
     log_action("Starting mission kickoff...")
-    return crew.kickoff()
+    try:
+        return crew.kickoff()
+    except Exception as e:
+        log_error(f"Crew execution failed: {e}")
 
 if __name__ == "__main__":
     run_mission()
