@@ -22,7 +22,8 @@ pipeline {
 
                         // 3. Build and Start
                         sh "docker compose down"
-                        sh "docker compose up -d --build"
+                        sh "docker compose build --no-cache service"
+                        sh "docker compose up -d"
 
                         // 3. Clean up the .env file after deployment (optional but safer)
                         sh "[ -f .env ] && rm .env"
