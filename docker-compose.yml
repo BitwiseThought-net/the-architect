@@ -66,14 +66,13 @@ services:
     stdin_open: true
     tty: true
     volumes:
-#      - ./agent-app:/app
       - agent-memory:/app/.crewai
     working_dir: /app
     env_file:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
-      - PYTHONPATH=/app
+      - PYTHONPATH=.
       - OPENAI_API_BASE=${LITELLM_BASE_URL}
       - CHROMA_API_BASE=http://chromadb:8000
       - CREWAI_STORAGE_DIR=/app/.crewai
