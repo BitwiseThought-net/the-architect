@@ -62,7 +62,8 @@ services:
   service:
     container_name: agent-smith
     build:
-      context: ./agent-app
+      context: .
+      dockerfile: agent-app/Dockerfile
     stdin_open: true
     tty: true
     volumes:

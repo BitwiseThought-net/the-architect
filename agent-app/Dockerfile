@@ -13,16 +13,16 @@ RUN apt-get update && apt-get install -y \
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy requirements file first to leverage Docker layer caching
-COPY requirements.txt .
+# Copy from the host's agent-app folder into the container's /app
+COPY agent-app/requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -v -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the entire agent-app directory contents into /app
-COPY . .
+# Copy the contents of agent-app into /app
+COPY agent-app/ .
 
-# Sanitize line endings
+# Ensure line endings are fixed for all copied files
 RUN find . -type f -name "*.py" -print0 | xargs -0 dos2unix && \
     apt-get --purge remove -y dos2unix
 
