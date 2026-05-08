@@ -47,7 +47,7 @@ def wait_for_llm(url, model):
 def run_mission():
     update_heartbeat()
     
-    # 1. Config & Infrastructure
+    # 1. Config & Infrastructure (Pulled from config.json first)
     model_name = get_config_value("MODEL_NAME", "qwen3.6:latest")
     litellm_url = get_config_value("LITELLM_URL", "http://agent-litellm:4000/v1")
     
@@ -59,13 +59,13 @@ def run_mission():
     custom_llm = LLM(
         model=f"ollama/{model_name}",
         base_url=litellm_url,
-        api_key=os.getenv("OPENAI_API_KEY", "sk-local-1234"),
+        api_key=get_config_value("OPENAI_API_KEY", "sk-local-1234"),
         temperature=float(get_config_value("TEMPERATURE", 0.3)),
         max_tokens=4096
     )
 
     # 2. Team Assembly
-    team_file = os.getenv("TEAM_CONFIG", "team.json")
+    team_file = get_config_value("TEAM_CONFIG", "team.json")
     try:
         with open(team_file, 'r') as f:
             team_data = json.load(f)
@@ -127,7 +127,7 @@ def run_mission():
             if attempt < int(get_config_value("MAX_RETRIES", 3)) - 1:
                 time.sleep(int(get_config_value("RETRY_DELAY_SECONDS", 10)))
             else:
-                log_error("Max retries reached. Idling for debug...")
+                log_error("Max retries reached. Idling...")
                 while True:
                     update_heartbeat(); time.sleep(60)
 

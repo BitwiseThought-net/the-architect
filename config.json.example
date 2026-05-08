@@ -5,7 +5,7 @@
   "MAX_TOKENS": 4096,
   "OPENAI_API_KEY": "sk-local-1234",
   "ANTHROPIC_API_KEY": "ollama",
-  "NOTIFY_WEBHOOK_URL": "https://discord.com/api/webhooks/1415571692876599406/9aldKG-D87eMz8GfpDTS14cAgY7dhvObcg3_b6cEBlWDGUq2-7vOVQYlCy9WcT1L4k8R",
+  "NOTIFY_WEBHOOK_URL": "https://discord.com...",
   "MAX_RETRIES": 3,
   "RETRY_DELAY_SECONDS": 10,
   "MISSION_TIMEOUT_SECONDS": 1800,
