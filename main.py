@@ -14,19 +14,19 @@ def load_agent_and_tools(agent_config):
             tool_module = importlib.import_module(f"tools.{t_name}")
             all_tools.extend(tool_module.get_tools())
         except ImportError:
-            log_warn(f"⚠️ Tool {t_name} not found.")
+            log_warn(f"Tool {t_name} not found.")
 
     try:
         agent_module = importlib.import_module(f"agents.{agent_config['name']}")
         return agent_module.get_agent(tools=all_tools)
-    except Exception as e:
-        log_error(f"❌ Agent {agent_config['name']} loading failed: {e}")
+    except ImportError:
+        log_error(f"Agent {agent_config['name']} not found.")
         return None
 
 def run_mission():
     # --- STEP 1: WAIT FOR MODEL READINESS ---
     model_name = os.getenv("MODEL_NAME", "qwen3.6:latest")
-    log_action(f"⏳ Verifying {model_name} is fully pulled in LiteLLM...")
+    log_action(f"Verifying {model_name} is fully pulled in LiteLLM...")
     
     start_time = time.time()
     while True:
@@ -35,23 +35,23 @@ def run_mission():
             if response.status_code == 200:
                 models = response.json().get('data', [])
                 if any(m['id'] == f"ollama/{model_name}" for m in models):
-                    log_text(f"🚀 Model {model_name} confirmed ready!")
+                    log_text(f"Model {model_name} confirmed ready!")
                     break
         except Exception:
             pass
         
         if time.time() - start_time > 600:
-            log_error(f"❌ Timeout: {model_name} did not become ready in time.")
+            log_error(f"Timeout: {model_name} did not become ready in time.")
             return
 
-        log_text(f"⏳ Still waiting for {model_name} to finish pulling...")
+        log_text(f"Still waiting for {model_name} to finish pulling...")
         time.sleep(15)
 
     # --- STEP 2: DEFINE STABLE LLM ---
     custom_llm = LLM(
         model=f"ollama/{model_name}",
         base_url="http://agent-litellm:4000/v1",
-        api_key="sk-local-1234",
+        api_key=os.getenv("OPENAI_API_KEY", "sk-local-1234"),
         temperature=0.3,
         max_tokens=4096
     )
@@ -64,7 +64,6 @@ def run_mission():
     tasks_list = []
     has_librarian = False
 
-    # --- STEP 3: INITIALIZE AGENTS AND TASKS ---
     for item in config.get('active_agents', []):
         agent = load_agent_and_tools(item)
         if agent:
@@ -80,7 +79,6 @@ def run_mission():
                 human_input=item.get('human_approval', False)
             ))
 
-    # --- STEP 4: CONFIGURE CREW ---
     crew = Crew(
         agents=agents_list,
         tasks=tasks_list,
@@ -90,19 +88,18 @@ def run_mission():
         knowledge_sources=knowledge_sources
     )
 
-    # --- STEP 5: EXECUTION ---
     if has_librarian:
-        if knowledge_sources:
-            log_action("📚 Knowledge found. Synchronizing Librarian index...")
-            try:
+        log_action("Librarian detected. Starting training...")
+        try:
+            if knowledge_sources:
                 crew.train(n_iterations=1, filename="training_data.pkl", inputs={})
-                log_text("✅ Knowledge base synchronized.")
-            except Exception as e:
-                log_warn(f"⚠️ Training loop skipped: {e}")
-        else:
-            log_text("ℹ️ Knowledge directory empty. Skipping initial index.")
+                log_text("Knowledge base synchronized via training.")
+            else:
+                log_text("No knowledge sources to train on.")
+        except Exception as e:
+            log_warn(f"Training loop skipped: {e}. Proceeding to kickoff.")
 
-    log_action("🚀 Starting mission kickoff...")
+    log_action("Starting mission kickoff...")
     return crew.kickoff()
 
 if __name__ == "__main__":
