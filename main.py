@@ -46,10 +46,11 @@ def run_mission():
         log_text(f"Still waiting for {model_name} to finish pulling...")
         time.sleep(15)
 
+    # Standardize LLM for Agents
     custom_llm = LLM(
         model=f"ollama/{model_name}",
         base_url="http://agent-litellm:4000/v1",
-        api_key=os.getenv("OPENAI_API_KEY", "sk-local-1234"),
+        api_key="sk-local-1234",
         temperature=0.3,
         max_tokens=4096
     )
@@ -77,13 +78,25 @@ def run_mission():
                 human_input=item.get('human_approval', False)
             ))
 
+    # --- CRITICAL FIX FOR 401 ERROR ---
+    # Define the embedder specifically for the Crew's knowledge system
+    embedder_config = {
+        "provider": "openai",
+        "config": {
+            "model": "nomic-embed-text",
+            "api_key": "sk-local-1234",
+            "base_url": "http://agent-litellm:4000/v1"
+        }
+    }
+
     crew = Crew(
         agents=agents_list,
         tasks=tasks_list,
         process=Process.sequential,
         verbose=True,
         memory=True, 
-        knowledge_sources=knowledge_sources
+        knowledge_sources=knowledge_sources,
+        embedder=embedder_config  # This forces local embeddings
     )
 
     if has_librarian:
@@ -105,3 +118,4 @@ def run_mission():
 
 if __name__ == "__main__":
     run_mission()
+
