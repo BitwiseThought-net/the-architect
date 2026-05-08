@@ -1,4 +1,3 @@
-services:
   service:
     container_name: agent-smith
     build:
@@ -8,6 +7,10 @@ services:
     tty: true
     volumes:
       - agent-memory:/app/.crewai
+      - ./config.json:/app/config.json
+      - ./team.json:/app/team.json
+      - ./output:/app/output
+      - ./knowledge:/app/knowledge
     working_dir: /app
     env_file:
       - .env
@@ -18,12 +21,15 @@ services:
       - OPENAI_API_BASE=${LITELLM_BASE_URL}
       - CHROMA_API_BASE=http://chromadb:8000
       - CREWAI_STORAGE_DIR=/app/.crewai
-      - MAX_RETRIES=3
-      - RETRY_DELAY_SECONDS=10
-      - MISSION_TIMEOUT_SECONDS=1800
     depends_on:
       - litellm
       - chromadb
+    healthcheck:
+      test: ["CMD", "sh", "-c", "[ $(($(date +%s) - $(stat -c %Y /tmp/heartbeat))) -lt 300 ]"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 2m
     labels:
       autoheal: true
 
