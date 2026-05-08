@@ -30,10 +30,10 @@ def load_agent_and_tools(agent_config):
 
 def run_mission():
     # --- LOAD PARAMETERS FROM ENV ---
-    # These are now coming directly from the docker-compose.yml environment section
     max_retries = int(os.getenv("MAX_RETRIES", 3))
     retry_delay_seconds = int(os.getenv("RETRY_DELAY_SECONDS", 10))
     mission_timeout_seconds = int(os.getenv("MISSION_TIMEOUT_SECONDS", 1800))
+    team_config_file = os.getenv("TEAM_CONFIG", "team.json")
 
     model_name = os.getenv("MODEL_NAME", "qwen3.6:latest")
     log_action(f"Verifying {model_name} is fully pulled in LiteLLM...")
@@ -65,7 +65,8 @@ def run_mission():
         max_tokens=4096
     )
 
-    with open('config.json', 'r') as f:
+    # Load from the new team.json file
+    with open(team_config_file, 'r') as f:
         config = json.load(f)
 
     knowledge_sources = get_all_knowledge_sources()

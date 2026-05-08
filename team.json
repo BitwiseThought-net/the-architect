@@ -1,0 +1,44 @@
+{
+  "mission_name": "End-to-End Secure Feature Development",
+  "active_agents": [
+    {
+      "name": "librarian",
+      "task_description": "Scan the /knowledge directory and synchronize the ChromaDB index with any new files found.",
+      "expected_output": "A summary report of the total files indexed and a confirmation that the RAG database is up to date."
+    },
+    {
+      "name": "researcher",
+      "tools": ["search_duckduckgo"],
+      "task_description": "Research best practices for implementing a secure SQLite database connection in Python using 2024 standards.",
+      "expected_output": "A technical report detailing the required libraries, connection string patterns, and common pitfalls."
+    },
+    {
+      "name": "architect",
+      "task_description": "Based on the research, design a modular file structure and a class-based schema for the database handler.",
+      "expected_output": "A structural plan showing the file names, class definitions, and how components interact."
+    },
+    {
+      "name": "auditor_safe",
+      "task_description": "Review the proposed architecture for SQL injection risks and ensure the plan follows 'Zero Trust' principles.",
+      "expected_output": "A security clearance report or a list of mandatory hardening changes the coder must follow."
+    },
+    {
+      "name": "coder",
+      "tools": ["file_write_safe"],
+      "task_description": "Implement the database handler in 'db_manager.py' based on the architect's design and auditor's security rules.",
+      "expected_output": "A success message confirming 'db_manager.py' has been written to the /app/output directory."
+    },
+    {
+      "name": "tester",
+      "tools": ["file_write_safe", "terminal_safe"],
+      "task_description": "1. Write pytest unit tests for the generated code. 2. Execute the tests using the safe_terminal_exec tool. 3. Report if the tests passed or failed.",
+      "expected_output": "A test results report including the stdout from the pytest run."
+    },
+    {
+      "name": "writer",
+      "tools": ["file_write_safe"],
+      "task_description": "Update the project's README.md to include documentation for the new database module and instructions on running the tests.",
+      "expected_output": "A Markdown formatted documentation block saved as 'README_UPDATE.md'."
+    }
+  ]
+}

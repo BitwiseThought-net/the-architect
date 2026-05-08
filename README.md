@@ -62,11 +62,11 @@ Extend agent capabilities by adding scripts to the `tools/` folder. Agents load 
 - **`file_read.py` / `file_write.py`**: Restricted local filesystem interaction.
 - **`notifier.py`**: Slack/Discord webhook alerts for Human-in-the-Loop checkpoints.
 
-## ⚙️ Configuration (`config.json`)
+## ⚙️ Configuration (`team.json`)
 
 > "It is purpose that created us, purpose that connects us, purpose that pulls us, that guides us, that drives us; it is purpose that defines, purpose that binds us."
 
-The `config.json` file is your mission control. It defines which agents are active, their assigned tools, and their specific tasks.
+The `team.json` file is your mission control. It defines which agents are active, their assigned tools, and their specific tasks.
 
 ```json
 {
@@ -96,7 +96,7 @@ The `config.json` file is your mission control. It defines which agents are acti
 
 ## 🛡️ Security Architecture: Safe Mode vs. Standard Mode
 
-The Smith Stack features a parallel tool and agent architecture, allowing you to toggle between "Sandboxed" and "Full Access" modes via `config.json`.
+The Smith Stack features a parallel tool and agent architecture, allowing you to toggle between "Sandboxed" and "Full Access" modes via `team.json`.
 
 ### Hardened Tools (`tools/`)
 - **`file_write_safe.py`**: Restricts all file operations strictly to the `/app/output` directory.
@@ -115,7 +115,7 @@ The system now features a **"Zero-Maintenance" RAG pipeline**:
 
 Stay informed even when the terminal is out of sight:
 - **Proactive Alerting**: Agents assigned the `notifier` tool will ping your Slack or Discord webhook when they reach a checkpoint.
-- **Manual Intervention**: Set `"human_approval": true` in `config.json` to pause the mission for manual feedback or correction via the terminal.
+- **Manual Intervention**: Set `"human_approval": true` in `team.json` to pause the mission for manual feedback or correction via the terminal.
 
 ## 📦 Updated Dependencies
 To support advanced document parsing and notifications, ensure your `requirements.txt` includes:
@@ -145,7 +145,7 @@ Adding a new agent to the Smith Stack is straightforward. Each agent must reside
 Create a new file in `agent-app/agents/`, for example: `security_expert.py`.
 
 ### 2. Implement the `get_agent` Function
-Every agent file **must** include a `get_agent(tools=None)` function. This allows `main.py` to inject dynamically loaded tools from the `tools/` folder based on your `config.json`.
+Every agent file **must** include a `get_agent(tools=None)` function. This allows `main.py` to inject dynamically loaded tools from the `tools/` folder based on your `team.json`.
 
 ```python
 from crewai import Agent
@@ -163,7 +163,7 @@ def get_agent(tools=None):
         # Inherits the local model from your .env
         llm=f"openai/ollama/{os.getenv('MODEL_NAME')}",
         base_url="http://litellm:4000/v1",
-        # Assigns the tools provided by config.json
+        # Assigns the tools provided by team.json
         tools=tools or [],
         # Recommended: Enable memory for long-term task consistency
         memory=True,
@@ -171,7 +171,7 @@ def get_agent(tools=None):
     )
 ```
 
-### 3. Register in `config.json`
+### 3. Register in `team.json`
 Once the file is created, you do not need to restart the entire stack. Simply add the agent to your mission configuration:
 
 ```json
@@ -185,7 +185,7 @@ Once the file is created, you do not need to restart the entire stack. Simply ad
 
 ### Key Rules for Agent Parity:
 - **`allow_knowledge_retrieval=True`**: Include this if the agent needs to access the RAG database (ChromaDB) via the Librarian's indexed files.
-- **Sequential Context**: Because the stack uses a sequential process, your new agent will automatically have access to the "thoughts" and outputs of any agents listed before it in the `config.json`.
+- **Sequential Context**: Because the stack uses a sequential process, your new agent will automatically have access to the "thoughts" and outputs of any agents listed before it in the `team.json`.
 
 
 ## 🛡️ License

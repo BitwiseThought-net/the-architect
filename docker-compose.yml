@@ -12,6 +12,7 @@ services:
     env_file:
       - .env
     environment:
+      - TEAM_CONFIG=team.json
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=.
       - OPENAI_API_BASE=${LITELLM_BASE_URL}
