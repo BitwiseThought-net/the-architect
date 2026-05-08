@@ -1,10 +1,12 @@
 import os
 import sys
+import importlib.util
 
-# --- BOOTSTRAP PATHING ---
-# Ensure /app is the primary search path for 'lib', 'agents', etc.
-# This overrides any environmental PYTHONPATH confusion.
-sys.path.insert(0, '/app')
+# Direct path import for logger to bypass ModuleNotFoundError
+spec = importlib.util.spec_from_file_location("logger", "/app/lib/logger.py")
+logger = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(logger)
+log_action, log_text, log_warn, log_error = logger.log_action, logger.log_text, logger.log_warn, logger.log_error
 
 import json
 import importlib

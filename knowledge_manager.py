@@ -1,13 +1,14 @@
 import os
 import sys
+import importlib.util
+
+# Direct path import for logger to bypass ModuleNotFoundError
+spec = importlib.util.spec_from_file_location("logger", "/app/lib/logger.py")
+logger = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(logger)
+log_action, log_text, log_warn, log_error = logger.log_action, logger.log_text, logger.log_warn, logger.log_error
+
 import importlib
-
-# --- BOOTSTRAP PATHING ---
-# Ensure /app is in the path for this module's imports
-if '/app' not in sys.path:
-    sys.path.insert(0, '/app')
-
-from lib.logger import log_action, log_text, log_warn, log_error
 
 def get_all_knowledge_sources():
     knowledge_dir = "knowledge"
