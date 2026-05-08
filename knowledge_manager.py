@@ -1,5 +1,12 @@
 import os
+import sys
 import importlib
+
+# --- BOOTSTRAP PATHING ---
+# Ensure /app is in the path for this module's imports
+if '/app' not in sys.path:
+    sys.path.insert(0, '/app')
+
 from lib.logger import log_action, log_text, log_warn, log_error
 
 def get_all_knowledge_sources():
@@ -50,3 +57,4 @@ def get_all_knowledge_sources():
     log_text(f"Total knowledge sources identified: {len(sources)}")
     log_action("Knowledge sync complete.")
     return sources
+
