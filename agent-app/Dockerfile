@@ -24,9 +24,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the contents of agent-app into /app
 COPY agent-app/ .
 
-# Ensure all subdirectories are treated as Python packages
-RUN touch lib/__init__.py agents/__init__.py tools/__init__.py loaders/__init__.py
-
 # Normalize line endings to Linux LF
 RUN find . -type f -name "*.py" -print0 | xargs -0 dos2unix && \
     apt-get --purge remove -y dos2unix
