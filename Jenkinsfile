@@ -16,15 +16,19 @@ pipeline {
                     script {
                         sh "[ -f '${envFile}' ] && cp '${envFile}' .env"
                         sh "sed -i 's/\\r\$//' .env"
-
+                        
+                        // --- DIAGNOSTIC CHECK ---
+                        // Confirm lib folder and its contents exist in Jenkins workspace
+                        sh "ls -R lib/ || echo '❌ ERROR: lib folder missing in Jenkins workspace'"
+                        
                         // 2. GLOBAL FIX: Sanitize all files in the app folder
                         sh "find . -type f -exec sed -i 's/\\r\$//' {} +"
-
+                        
                         // 3. Build and Start
                         sh "docker compose down"
                         sh "docker compose build --no-cache service"
                         sh "docker compose up -d"
-
+                        
                         // 3. Clean up the .env file after deployment (optional but safer)
                         sh "[ -f .env ] && rm .env"
                     }
