@@ -51,7 +51,7 @@ def run_mission():
     custom_llm = LLM(
         model=f"ollama/{model_name}",
         base_url="http://agent-litellm:4000/v1",
-        drop_params=True
+        api_key=os.getenv("OPENAI_API_KEY", "sk-local-1234")
     )
 
     with open('config.json', 'r') as f:
