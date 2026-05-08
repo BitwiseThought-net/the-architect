@@ -19,8 +19,8 @@ def load_agent_and_tools(agent_config):
     try:
         agent_module = importlib.import_module(f"agents.{agent_config['name']}")
         return agent_module.get_agent(tools=all_tools)
-    except ImportError:
-        log_error(f"Agent {agent_config['name']} not found.")
+    except Exception as e:
+        log_error(f"Agent {agent_config['name']} loading failed: {e}")
         return None
 
 def run_mission():
@@ -48,10 +48,15 @@ def run_mission():
         time.sleep(15)
 
     # --- STEP 2: DEFINE STABLE LLM ---
+    # We add a high context window and a lower temperature to prevent 
+    # the model from getting 'confused' and returning empty strings.
     custom_llm = LLM(
         model=f"ollama/{model_name}",
         base_url="http://agent-litellm:4000/v1",
-        api_key=os.getenv("OPENAI_API_KEY", "sk-local-1234")
+        api_key="sk-local-1234",
+        temperature=0.3,      # Lower temperature = more stable formatting
+        max_tokens=4096,     # Ensure enough room for 'Thoughts'
+        timeout=300          # Allow 5 mins for local model generation
     )
 
     with open('config.json', 'r') as f:
@@ -62,11 +67,14 @@ def run_mission():
     tasks_list = []
     has_librarian = False
 
+    # --- STEP 3: INITIALIZE AGENTS AND TASKS ---
     for item in config.get('active_agents', []):
         agent = load_agent_and_tools(item)
         if agent:
+            # FORCE the agent to use our pre-configured stable LLM
             agent.llm = custom_llm
             agents_list.append(agent)
+
             if item['name'] == "librarian":
                 has_librarian = True
 
@@ -77,6 +85,7 @@ def run_mission():
                 human_input=item.get('human_approval', False)
             ))
 
+    # --- STEP 4: CONFIGURE CREW ---
     crew = Crew(
         agents=agents_list,
         tasks=tasks_list,
@@ -86,16 +95,27 @@ def run_mission():
         knowledge_sources=knowledge_sources
     )
 
+    # --- STEP 5: EXECUTION ---
+    # If the Librarian is present, handle the training loop carefully
     if has_librarian:
-        log_action("Librarian detected. Starting training...")
-        try:
-            crew.train(n_iterations=1, filename="training_data.pkl", inputs={})
-            log_text("Knowledge base synchronized via training.")
-        except Exception as e:
-            log_warn(f"Training loop skipped: {e}. Proceeding to kickoff.")
+        if knowledge_sources:
+            log_action("📚 Knowledge found. Synchronizing Librarian index...")
+            try:
+                # crew.train is sensitive; if it fails, we move to kickoff
+                crew.train(n_iterations=1, filename="training_data.pkl", inputs={})
+                log_text("✅ Knowledge base synchronized.")
+            except Exception as e:
+                log_warn(f"⚠️ Training loop skipped (LLM returned empty): {e}")
+        else:
+            log_text("ℹ️ Knowledge directory empty. Skipping initial index.")
 
-    log_action("Starting mission kickoff...")
-    return crew.kickoff()
+    log_action("🚀 Starting mission kickoff...")
+    try:
+        return crew.kickoff()
+    except ValueError as e:
+        if "None or empty" in str(e):
+            log_error("❌ Fatal Error: LLM returned an empty response. Check model context limits.")
+        raise e
 
 if __name__ == "__main__":
     run_mission()
