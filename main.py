@@ -26,7 +26,7 @@ def load_agent_and_tools(agent_config):
 def run_mission():
     model_name = os.getenv("MODEL_NAME", "qwen3.6:latest")
     log_action(f"Verifying {model_name} is fully pulled in LiteLLM...")
-    
+
     start_time = time.time()
     while True:
         try:
@@ -38,7 +38,7 @@ def run_mission():
                     break
         except Exception:
             pass
-        
+
         if time.time() - start_time > 600:
             log_error(f"Timeout: {model_name} did not become ready in time.")
             return
@@ -69,7 +69,7 @@ def run_mission():
             agents_list.append(agent)
             if item['name'] == "librarian":
                 has_librarian = True
-            
+
             tasks_list.append(Task(
                 description=item.get('task_description'),
                 expected_output=item.get('expected_output'),
@@ -77,7 +77,7 @@ def run_mission():
                 human_input=item.get('human_approval', False)
             ))
 
-    # --- UPDATED EMBEDDER CONFIG ---
+    # Forced Local Embedder
     embedder_config = {
         "provider": "ollama",
         "config": {
@@ -91,7 +91,7 @@ def run_mission():
         tasks=tasks_list,
         process=Process.sequential,
         verbose=True,
-        memory=True, 
+        memory=False, # Set to False to bypass the 'Invalid type Memory' telemetry bug
         knowledge_sources=knowledge_sources,
         embedder=embedder_config
     )
@@ -100,10 +100,8 @@ def run_mission():
         log_action("Librarian detected. Starting training...")
         try:
             if knowledge_sources:
-                # We add a delay to ensure ChromaDB is ready for the first upsert
-                time.sleep(5) 
                 crew.train(n_iterations=1, filename="training_data.pkl", inputs={})
-                log_text("Knowledge base synchronized via training.")
+                log_text("Knowledge base synchronized.")
             else:
                 log_text("No knowledge sources found to train on.")
         except Exception as e:
