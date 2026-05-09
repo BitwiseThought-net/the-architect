@@ -6,10 +6,19 @@ import requests
 from crewai import Crew, Task, Process, LLM
 from knowledge_manager import get_all_knowledge_sources
 from lib.logger import log_action, log_text, log_warn, log_error
-from lib.utils import update_heartbeat, get_config_value, set_mission_timeout, clear_mission_timeout
+from lib.utils import (
+    update_heartbeat,
+    get_config_value,
+    set_mission_timeout,
+    clear_mission_timeout,
+    get_active_plugins
+)
 
 def load_agent_and_tools(agent_config, llm):
+    agent_name = agent_config['name']
     all_tools = []
+
+    # 1. Load standard tools from team.json
     for t_name in agent_config.get('tools', []):
         try:
             tool_module = importlib.import_module(f"tools.{t_name}")
@@ -17,13 +26,39 @@ def load_agent_and_tools(agent_config, llm):
         except ImportError:
             log_warn(f"Tool {t_name} not found.")
 
+    # 2. DYNAMIC PLUGIN INJECTION (Hot-swappable features)
+    active_plugins = get_active_plugins()
+
+    # Mapping of "feature" IDs to their Python tool module names
+    plugin_tool_map = {
+        "web_search": "search_duckduckgo",
+        "notifications": "notifier",
+        "shell_access": "terminal",
+        "safe_shell": "terminal_safe"
+    }
+
+    for feature_id, plugin_info in active_plugins.items():
+        target_agents = plugin_info.get("enabled_for", ["*"])
+
+        # Check if plugin applies to this specific agent or everyone (*)
+        if agent_name in target_agents or "*" in target_agents:
+            if feature_id in plugin_tool_map:
+                tool_mod_name = plugin_tool_map[feature_id]
+                try:
+                    tool_module = importlib.import_module(f"tools.{tool_mod_name}")
+                    all_tools.extend(tool_module.get_tools())
+                    log_text(f"Plugin '{feature_id}' enabled for agent: {agent_name}")
+                except ImportError:
+                    log_error(f"Plugin tool '{tool_mod_name}' not found in tools directory.")
+
+    # 3. Finalize Agent
     try:
-        agent_module = importlib.import_module(f"agents.{agent_config['name']}")
+        agent_module = importlib.import_module(f"agents.{agent_name}")
         agent = agent_module.get_agent(tools=all_tools)
         agent.llm = llm
         return agent
     except Exception as e:
-        log_error(f"Agent {agent_config['name']} loading failed: {e}")
+        log_error(f"Agent {agent_name} loading failed: {e}")
         return None
 
 def wait_for_llm(url, model):
@@ -46,11 +81,11 @@ def wait_for_llm(url, model):
 
 def run_mission():
     update_heartbeat()
-    
+
     # 1. Config & Infrastructure (Pulled from config.json first)
     model_name = get_config_value("MODEL_NAME", "qwen3.6:latest")
     litellm_url = get_config_value("LITELLM_URL", "http://agent-litellm:4000/v1")
-    
+
     try:
         wait_for_llm(litellm_url, model_name)
     except TimeoutError as e:
@@ -77,6 +112,7 @@ def run_mission():
     has_librarian = False
 
     for item in team_data.get('active_agents', []):
+        # Tools are now injected inside load_agent_and_tools including plugins
         agent = load_agent_and_tools(item, custom_llm)
         if agent:
             agents_list.append(agent)
@@ -117,7 +153,7 @@ def run_mission():
     for attempt in range(int(get_config_value("MAX_RETRIES", 3))):
         update_heartbeat()
         set_mission_timeout(int(get_config_value("MISSION_TIMEOUT_SECONDS", 1800)))
-        
+
         try:
             result = crew.kickoff()
             clear_mission_timeout(); return result

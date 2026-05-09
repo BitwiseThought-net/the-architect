@@ -28,6 +28,11 @@ pipeline {
                         // Ensure team.json exists
                         sh "if [ ! -f team.json ]; then touch team.json; fi"
 
+                        // --- PREPARE PLUGINS DIRECTORY ---
+                        // Ensure plugins folder and __init__.py exist so Docker doesn't throw mount errors
+                        sh "mkdir -p plugins"
+                        sh "touch plugins/__init__.py"
+
                         sh '''
                         if [ -f docker-compose.yml ]; then
                             # We use down to ensure old "stale" file-mount handles are released

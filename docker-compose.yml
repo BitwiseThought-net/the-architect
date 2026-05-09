@@ -9,6 +9,7 @@ services:
     volumes:
       - agent-memory:/app/.crewai
       - .:/app/config_mount:ro
+      - ./plugins:/app/plugins:ro
       - ./output:/app/output
       - ./knowledge:/app/knowledge
     working_dir: /app
@@ -43,7 +44,8 @@ services:
       - .env
     volumes:
       - ./ollama:/root/.ollama
-    entrypoint: /bin/sh -c "ollama serve & sleep 5 && ollama pull ${MODEL_NAME} && ollama pull nomic-embed-text && wait"
+    # Added mkdir -p plugins to ensure the directory exists for the service mount
+    entrypoint: /bin/sh -c "mkdir -p plugins && ollama serve & sleep 5 && ollama pull ${MODEL_NAME} && ollama pull nomic-embed-text && wait"
     deploy:
       resources:
         reservations:

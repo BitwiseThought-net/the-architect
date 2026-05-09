@@ -36,7 +36,6 @@ def get_config_value(key, default=None):
     Checks config_mount first (stable directory mount), then the local root,
     then Environment Variables.
     """
-    # Search paths for configuration files
     paths = ['config_mount/config.json', 'config.json']
     val = None
 
@@ -47,21 +46,50 @@ def get_config_value(key, default=None):
                     config = json.load(f)
                     if key in config:
                         val = config[key]
-                        break  # Found the value, stop searching paths
-        except Exception as e:
-            # Silent fail for individual path checks to proceed to next option
+                        break
+        except Exception:
             continue
 
-    # Fallback to Environment Variable if not found in JSON files
     if val is None:
         val = os.getenv(key)
 
-    # Use provided default if no value was found in JSON or ENV
     if val is None:
         return default
 
-    # Auto-cast common numeric strings from ENV fallbacks to ensure library compatibility
     if isinstance(val, str) and val.isdigit():
         return int(val)
-
     return val
+
+# --- PLUGIN SYSTEM ---
+def get_active_plugins():
+    """
+    Scans the plugins/ directory for .json files on-demand.
+    Returns a dict: { "feature_name": { "settings": {}, "enabled_for": [] } }
+    """
+    # Check both mount point and local directory
+    plugin_dirs = ['config_mount/plugins', 'plugins']
+    active_features = {}
+
+    for p_dir in plugin_dirs:
+        if not os.path.exists(p_dir):
+            continue
+
+        try:
+            for filename in sorted(os.listdir(p_dir)):
+                if filename.endswith('.json'):
+                    path = os.path.join(p_dir, filename)
+                    with open(path, 'r') as f:
+                        try:
+                            data = json.load(f)
+                            feature = data.get("feature")
+                            # Only return if explicitly enabled
+                            if feature and data.get("enabled") is True:
+                                active_features[feature] = {
+                                    "settings": data.get("settings", {}),
+                                    "enabled_for": data.get("enabled_for", ["*"]) # Default to all if missing
+                                }
+                        except json.JSONDecodeError:
+                            continue
+        except Exception as e:
+            log_error(f"Error scanning plugins in {p_dir}: {e}")
+    return active_features
