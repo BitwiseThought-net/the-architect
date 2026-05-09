@@ -3,6 +3,23 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# Ignore active configuration files
+config.json
+team.json
+
+# Ignore active Python plugins
+# This ignores all .py files in plugins/ EXCEPT for __init__.py and .example files
+plugins/*.py
+!plugins/__init__.py
+!plugins/*.py.example
+
+# Ignore dynamic plugin JSONs if any are left
+plugins/*.json
+
+# Keep the folder structure but ignore content
+!plugins/
+
+
 # C extensions
 *.so
 

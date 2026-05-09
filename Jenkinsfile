@@ -15,23 +15,17 @@ pipeline {
         }
         stage('Deploy') {
             steps {
-                // This "binds" your secret file to a temporary variable (envFile)
-                withCredentials([file(credentialsId: "${env.REPO_NAME}-env", variable: 'envFile')]) {
+                withCredentials([
+                    file(credentialsId: "${env.REPO_NAME}-env", variable: 'ENV_SECRET')
+                ]) {
                     script {
-                        sh "[ -f '${envFile}' ] && cp '${envFile}' .env"
-                        sh "sed -i 's/\\r\$//' .env"
-
-                        // --- PREPARE CONFIGURATION FILES ---
-                        // Ensure config.json exists (using example as template if available)
-                        sh "if [ ! -f config.json ]; then if [ -f config.json.example ]; then cp config.json.example config.json; else touch config.json; fi; fi"
-                        
-                        // Ensure team.json exists
-                        sh "if [ ! -f team.json ]; then touch team.json; fi"
-
                         // --- PREPARE PLUGINS DIRECTORY ---
                         // Ensure plugins folder and __init__.py exist so Docker doesn't throw mount errors
                         sh "mkdir -p plugins"
                         sh "touch plugins/__init__.py"
+
+                        sh "[ -f '${ENV_SECRET}' ] && cp '${ENV_SECRET}' .env"
+                        sh "sed -i 's/\\r\$//' .env"
 
                         sh '''
                         if [ -f docker-compose.yml ]; then

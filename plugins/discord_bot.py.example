@@ -1,0 +1,79 @@
+import requests
+import os
+from crewai.tools import tool
+from lib.utils import get_config_value
+
+# --- PLUGIN METADATA & INSTRUCTIONS ---
+INFO = {
+    "feature": "discord_bot",
+    "enabled": True,
+    "enabled_for": ["*"],  # List specific agents or ["*"] for all
+    "instructions": [
+        "1. Go to Discord Developer Portal (https://discord.com).",
+        "2. Create 'New Application' named Agent-Smith.",
+        "3. Go to 'Bot' tab: Reset/Copy Token into 'bot_token' in SETTINGS below.",
+        "4. Enable 'Message Content Intent' under Privileged Gateway Intents.",
+        "5. Go to 'OAuth2' -> 'URL Generator': Select scopes 'bot' and 'applications.commands'.",
+        "6. Select Permissions: 'Send Messages', 'Read Message History', 'Use Slash Commands'.",
+        "7. Use generated URL to invite the bot to your server.",
+        "8. Enable Developer Mode in Discord (User Settings -> Advanced).",
+        "9. Right-click Server for 'guild_id' and target Channel for 'target_channel_id'."
+    ]
+}
+
+# --- PLUGIN SETTINGS ---
+# Fallback values if not provided in config.json
+SETTINGS = {
+    "bot_token": "YOUR_DISCORD_BOT_TOKEN_HERE",
+    "guild_id": "YOUR_SERVER_ID_HERE",
+    "target_channel_id": "YOUR_CHANNEL_ID_HERE",
+    "response_prefix_enabled": True
+}
+
+# --- PLUGIN LOGIC (The Internal Tool) ---
+@tool("discord_interaction")
+def discord_interaction(message: str):
+    """
+    Sends agent responses directly to the configured Discord channel using the Bot Token.
+    Checks config.json first, then local SETTINGS.
+    """
+    # Priority 1: config.json | Priority 2: Local SETTINGS
+    token = get_config_value("bot_token") or SETTINGS.get("bot_token")
+    channel_id = get_config_value("target_channel_id") or SETTINGS.get("target_channel_id")
+
+    if not token or "YOUR_DISCORD_BOT_TOKEN" in token:
+        return "❌ Plugin Error: Discord Bot Token is not configured."
+    if not channel_id or "YOUR_CHANNEL_ID" in channel_id:
+        return "❌ Plugin Error: target_channel_id is not configured."
+
+    # Official Discord API endpoint for creating messages
+    url = f"https://discord.com{channel_id}/messages"
+
+    # Bot Authorization Header
+    headers = {
+        "Authorization": f"Bot {token}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {"content": message}
+
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=10)
+        if response.status_code in [200, 201]:
+            return "✅ Response successfully posted to Discord."
+        else:
+            return f"❌ Discord API Error {response.status_code}: {response.text}"
+    except Exception as e:
+        return f"❌ Connection to Discord failed: {str(e)}"
+
+# --- REGISTRATION ---
+def register():
+    """Provides the tool and identity rules to the main service loader."""
+    if not INFO.get("enabled"):
+        return None
+
+    return {
+        "tools": [discord_interaction],
+        "enabled_for": INFO.get("enabled_for", ["*"]),
+        "identity_prefix": SETTINGS.get("response_prefix_enabled", True)
+    }

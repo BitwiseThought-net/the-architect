@@ -1,0 +1,71 @@
+import requests
+import os
+from crewai.tools import tool
+from lib.utils import get_config_value
+
+# --- PLUGIN METADATA ---
+INFO = {
+    "feature": "discord_notifications",
+    "enabled": True,
+    "enabled_for": ["*"],
+    "instructions": [
+        "1. Create a Webhook in Discord (Server Settings -> Integrations -> Webhooks).",
+        "2. Copy the Webhook URL.",
+        "3. Option A: Add 'NOTIFY_WEBHOOK_URL' to your config.json (Recommended).",
+        "4. Option B: Enter the URL in the 'SETTINGS' section of this file.",
+        "5. This plugin allows agents to send high-priority system alerts."
+    ]
+}
+
+# --- PLUGIN SETTINGS ---
+# If NOTIFY_WEBHOOK_URL is not found in config.json, the value below is used.
+SETTINGS = {
+    "NOTIFY_WEBHOOK_URL": "YOUR_DISCORD_WEBHOOK_URL_HERE"
+}
+
+# --- PLUGIN LOGIC (The Webhook Tool) ---
+@tool("send_notification")
+def send_notification(message: str):
+    """
+    Sends a high-priority alert to Discord via Webhook.
+    Useful for system alerts or final mission status reports.
+    """
+    # Priority 1: config.json (via get_config_value)
+    # Priority 2: local SETTINGS dictionary
+    # Priority 3: os.environ fallback
+    webhook_url = get_config_value("NOTIFY_WEBHOOK_URL")
+
+    if not webhook_url or "discord.com" not in str(webhook_url):
+        webhook_url = SETTINGS.get("NOTIFY_WEBHOOK_URL")
+
+    if not webhook_url or "discord.com" not in str(webhook_url):
+        webhook_url = os.getenv("NOTIFY_WEBHOOK_URL")
+
+    if not webhook_url or "discord.com" not in str(webhook_url):
+        return "⚠️ Notification skipped: NOTIFY_WEBHOOK_URL is missing or invalid in config.json, plugin settings, and .env."
+
+    payload = {
+        "content": f"📢 **System Alert:** {message}",
+        "username": "Agent-Smith Notifier"
+    }
+
+    try:
+        response = requests.post(webhook_url, json=payload, timeout=10)
+        if response.status_code in [200, 204]:
+            return "✅ Webhook notification sent successfully."
+        else:
+            return f"❌ Webhook failed with status: {response.status_code}"
+    except Exception as e:
+        return f"❌ Webhook connection error: {str(e)}"
+
+# --- REGISTRATION ---
+def register():
+    """Provides the webhook tool to the service loader."""
+    if not INFO.get("enabled"):
+        return None
+
+    return {
+        "tools": [send_notification],
+        "enabled_for": INFO.get("enabled_for", ["*"]),
+        "identity_prefix": False
+    }
