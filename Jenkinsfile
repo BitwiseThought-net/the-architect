@@ -19,26 +19,22 @@ pipeline {
                     file(credentialsId: "${env.REPO_NAME}-env", variable: 'ENV_SECRET')
                 ]) {
                     script {
-                        // --- PREPARE PLUGINS DIRECTORY ---
-                        // Ensure plugins folder and __init__.py exist so Docker doesn't throw mount errors
+                        // --- PREPARE WORKSPACE ---
                         sh "mkdir -p plugins"
                         sh "touch plugins/__init__.py"
-
-                        sh "[ -f '${ENV_SECRET}' ] && cp '${ENV_SECRET}' .env"
-                        sh "sed -i 's/\\r\$//' .env"
-
-                        sh '''
-                        if [ -f docker-compose.yml ]; then
-                            # We use down to ensure old "stale" file-mount handles are released
-                            docker compose down
-                            docker compose up -d --build
-                        else
-                            echo "No docker-compose.yml found, skipping..."
-                            exit 0
-                        fi
-                        '''
                         
-                        // 3. Clean up the .env file after deployment (optional but safer)
+                        sh "[ -f requirements.txt ] && sed -i 's/\\r\$//' requirements.txt"
+                        sh "[ -f '${ENV_SECRET}' ] && cp '${ENV_SECRET}' .env && sed -i 's/\\r\$//' .env"
+
+                        if (fileExists('docker-compose.yml')) {
+                            // Using down/up to refresh file-mount handles
+                            sh "docker compose down"
+                            sh "docker compose up -d --build"
+                        } else {
+                            error "No docker-compose.yml found, aborting deployment."
+                        }
+
+                        // Clean up sensitive .env file
                         sh "[ -f .env ] && rm .env"
                     }
                 }
@@ -47,6 +43,6 @@ pipeline {
     }
     post {
         success { echo '🚀 Deployment successful!' }
-        failure { echo '❌ Deployment failed. Check the logs.' }
+        failure { echo '❌ Deployment failed. Check the logs for pip or Docker errors.' }
     }
 }
