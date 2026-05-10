@@ -1,15 +1,10 @@
 
-# Smith Agent Stack: Locally Hosted Agentic Team
+# The Architect: A Locally Self-Hosted Agentic Team Harness
 
-> "Never send a human to do a machine's job."
-
-**Elevator Pitch:**
-The Smith Agent Stack is a fully local, privacy-first agentic AI agent framework designed for high-performance research and coding.
+The Architect harness is a fully local, privacy-first agentic AI agent framework designed for high-performance research and coding.
 By orchestrating a team of specialized agents—including a Librarian for dynamic RAG ingestion and a Cybersecurity Auditor for safe code generation—it transforms static documentation into an actionable, secure, and autonomous local developer ecosystem. No data leaves your machine; everything runs on **Ollama** and **ChromaDB**.
 
 ## 🚀 Getting Started
-
-> "Because of you, I'm no longer an Agent of this system. Because of you, I've changed. I'm unplugged. A new man, so to speak. Like you, apparently, free."
 
 ### Prerequisites
 - [Docker](https://docker.com) and Docker Compose installed.
@@ -19,8 +14,8 @@ By orchestrating a team of specialized agents—including a Librarian for dynami
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/BitwiseThought-net/agent-smith.git
-   cd agent-smith
+   git clone https://github.com/BitwiseThought-net/the-architect.git
+   cd the-architect
    ```
 2. **Configure your environment:**
    Create a `.env` file in the root directory:
@@ -43,8 +38,6 @@ By orchestrating a team of specialized agents—including a Librarian for dynami
 
 ## 🏗️ Project Architecture
 
-> "Why, Mr. Anderson? Why, why, why? ... Vagaries of perception!"
-
 ### **Knowledge Management**
 - **`knowledge/` Folder:** Place any technical files here.
 - **Loaders (`loaders/`):** The system uses "zero-maintenance" extension-based loading. To support a new format, simply create a `[extension].py` file in the `loaders/` folder. The `knowledge_manager.py` automatically pairs files with their corresponding loader at runtime.
@@ -63,8 +56,6 @@ Extend agent capabilities by adding scripts to the `tools/` folder. Agents load 
 - **`notifier.py`**: Slack/Discord webhook alerts for Human-in-the-Loop checkpoints.
 
 ## ⚙️ Configuration (`team.json`)
-
-> "It is purpose that created us, purpose that connects us, purpose that pulls us, that guides us, that drives us; it is purpose that defines, purpose that binds us."
 
 The `team.json` file is your mission control. It defines which agents are active, their assigned tools, and their specific tasks.
 
@@ -96,7 +87,7 @@ The `team.json` file is your mission control. It defines which agents are active
 
 ## 🛡️ Security Architecture: Safe Mode vs. Standard Mode
 
-The Smith Stack features a parallel tool and agent architecture, allowing you to toggle between "Sandboxed" and "Full Access" modes via `team.json`.
+The Architect Stack features a parallel tool and agent architecture, allowing you to toggle between "Sandboxed" and "Full Access" modes via `team.json`.
 
 ### Hardened Tools (`tools/`)
 - **`file_write_safe.py`**: Restricts all file operations strictly to the `/app/output` directory.
@@ -110,8 +101,6 @@ The system now features a **"Zero-Maintenance" RAG pipeline**:
 - **Librarian Integration**: Including the `librarian` agent in your `active_agents` list triggers an automatic knowledge refresh pass (`crew.train()`) to ensure the team is working with the most recent data.
 
 ## 🚨 Notifications & Human-in-the-Loop (HITL)
-
-> "I hate this place... This reality... I can taste your stink and every time I do, I fear that I've somehow been infected by it."
 
 Stay informed even when the terminal is out of sight:
 - **Proactive Alerting**: Agents assigned the `notifier` tool will ping your Slack or Discord webhook when they reach a checkpoint.
@@ -137,9 +126,7 @@ You can now orchestrate a full software development lifecycle team:
 
 ## 🛠️ Developing New Agents
 
-> "Everything that has a beginning, has an end, Neo."
-
-Adding a new agent to the Smith Stack is straightforward. Each agent must reside in the `agents/` folder and follow a standard functional signature to remain compatible with the dynamic loader.
+Adding a new agent to the Architect Stack is straightforward. Each agent must reside in the `agents/` folder and follow a standard functional signature to remain compatible with the dynamic loader.
 
 ### 1. Create the Agent File
 Create a new file in `agent-app/agents/`, for example: `security_expert.py`.
@@ -153,7 +140,7 @@ import os
 
 def get_agent(tools=None):
     """
-    Standard signature for Smith Stack agents.
+    Standard signature for The Architect Stack agents.
     :param tools: A list of tool objects passed by the dynamic loader.
     """
     return Agent(
@@ -189,7 +176,5 @@ Once the file is created, you do not need to restart the entire stack. Simply ad
 
 
 ## 🛡️ License
-
->  "The future is our world, Morpheus. The future is our time"
 
 This project is licensed under the **Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**. 
