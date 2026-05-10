@@ -4,6 +4,15 @@ pipeline {
         // Disables concurrent builds and aborts the previous running build
         disableConcurrentBuilds(abortPrevious: true)
     }
+    triggers {
+        GenericTrigger(
+            genericVariables: [
+                [key: 'isMerged', value: '$.pull_request.merged']
+            ],
+            regexpFilterText: '$isMerged',
+            regexpFilterExpression: 'true'
+        )
+    }
     stages {
         stage('Setup Variables') {
             steps {
