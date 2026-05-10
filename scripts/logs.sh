@@ -1,2 +1,2 @@
 #!/bin/bash
-docker logs -f $(basename "$PWD")
+docker logs -f ai-$(basename "$PWD")
