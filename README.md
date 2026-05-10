@@ -1,180 +1,152 @@
+# The Architect
 
-# The Architect: A Locally Self-Hosted Agentic Team Harness
+"Your life is the sum of a remainder of an unbalanced equation inherent to the programming of the matrix."
 
-The Architect harness is a fully local, privacy-first agentic AI agent framework designed for high-performance research and coding.
-By orchestrating a team of specialized agents—including a Librarian for dynamic RAG ingestion and a Cybersecurity Auditor for safe code generation—it transforms static documentation into an actionable, secure, and autonomous local developer ecosystem. No data leaves your machine; everything runs on **Ollama** and **ChromaDB**.
+**The Architect** is a hardened, production-ready autonomous agent orchestration framework built on **CrewAI**. It is designed to manage complex multi-agent workflows with local LLM integration, dynamic "on-the-fly" configuration, and a modular plugin system for interactive communication via Discord.
 
-## 🚀 Getting Started
+## 🚀 Key Features
+
+- **Local-First LLM Architecture**: Seamless integration with **Ollama** and **LiteLLM** for full data privacy and no API costs.
+- **Dynamic Configuration**: Modify system settings (`config.json`) and agent team definitions (`team.json`) in real-time without restarting containers.
+- **Modular Plugin System**: Self-contained Python plugins (e.g., Discord Bots, Notifications) that register tools and identity rules automatically.
+- **System Librarian**: Automated RAG (Retrieval-Augmented Generation) indexing that synchronizes local documentation from the `/knowledge` folder into ChromaDB.
+- **Hardened Execution**: Built-in retry logic, mission-level timeouts, and heartbeat monitoring for Docker auto-healing.
+- **Sandboxed Execution**: Specialized tools for safe Python and Pytest execution within restricted directories.
+
+---
+
+## 🔄 Execution Lifecycle
+1. **Infrastructure Check**: The system verifies that LiteLLM is ready and models are pulled.
+2. **Knowledge Sync**: The **Librarian** scans `/knowledge` and updates the vector database.
+3. **Team Assembly**: `team.json` is parsed, and agents are initialized with their tools and plugins.
+4. **Mission Kickoff**: The crew executes tasks sequentially.
+5. **Recovery/Idle**: If a task fails, the system retries based on `MAX_RETRIES` before entering a debug-friendly idle state.
+
+---
+
+## 🔒 The Sandbox Environment
+To ensure system integrity, **The Architect** employs a "Safe-by-Design" approach for technical tasks:
+- **Restricted Writes**: The `file_write_safe` tool strictly enforces that files are only written to the `/app/output` directory.
+- **Command Whitelisting**: `terminal_safe` only permits `python` and `pytest` commands to prevent arbitrary shell execution.
+- **Path Protection**: Any attempt at path traversal (`../`) is intercepted and blocked by the security auditors.
+
+---
+
+## 🛠 Debugging & Interaction
+- **Live Logs**: View agent thoughts in real-time: `docker logs -f the-architect`.
+- **Shell Access**: To inspect the container environment: `docker exec -it the-architect /bin/bash`.
+- **Web UI**: Access the Open WebUI at `http://localhost:3011` to chat with your models directly outside of the agent workflow.
+
+---
+
+## 📂 Project Structure
+- `agents/`: Python files defining agent roles (e.g., `coder.py`, `researcher.py`).
+- `tools/`: Custom Python tools available to agents (e.g., `terminal_safe.py`).
+- `loaders/`: File processors for the System Librarian (e.g., `pdf.py`, `csv.py`).
+- `plugins/`: Self-contained feature modules (e.g., Discord integration).
+- `knowledge/`: Raw data files (PDFs, TXT) for RAG indexing.
+- `output/`: The designated sandbox where agents save mission results.
+
+---
+
+## 🛠 Installation
 
 ### Prerequisites
-- [Docker](https://docker.com) and Docker Compose installed.
-- NVIDIA GPU with drivers (optional, but highly recommended for Ollama performance).
+- **Docker & Docker Compose**
+- **NVIDIA Container Toolkit** (for GPU acceleration)
+- **Jenkins** (optional, for CI/CD deployment)
 
-### Installation
-
+### Setup
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/BitwiseThought-net/the-architect.git
+   git clone https://github.com
    cd the-architect
    ```
-2. **Configure your environment:**
-   Create a `.env` file in the root directory:
+
+2. **Initialize Configuration:**
+   Copy the example files to create your active configuration:
    ```bash
-   MODEL_NAME=qwen3.6:latest
-   LITELLM_PORT=4000
-   UI_PORT=3011
-   ANTHROPIC_API_KEY=ollama
-   WEBUI_SECRET_KEY=super_secret_random_string
-   ```
-3. **Spin up the stack:**
-   ```bash
-   docker compose up -d
-   ```
-4. **Ingest Documentation:**
-   Drop your files into the `agent-app/knowledge` folder and run the ingestion script:
-   ```bash
-   ./ingest.sh
+   cp config.json.example config.json
+   cp team.json.example team.json
+   cp plugins/discord_bot.py.example plugins/discord_bot.py
+   cp plugins/discord_notifications.py.example plugins/discord_notifications.py
    ```
 
-## 🏗️ Project Architecture
+3. **Launch the System:**
+   ```bash
+   docker compose up -d --build
+   ```
 
-### **Knowledge Management**
-- **`knowledge/` Folder:** Place any technical files here.
-- **Loaders (`loaders/`):** The system uses "zero-maintenance" extension-based loading. To support a new format, simply create a `[extension].py` file in the `loaders/` folder. The `knowledge_manager.py` automatically pairs files with their corresponding loader at runtime.
+---
 
-### **The Agent Team (`agents/`)**
-Agents are defined in individual files and dynamically loaded based on your mission needs:
-- **Librarian:** Handles the indexing of the `knowledge` folder into ChromaDB.
-- **Researcher:** Conducts deep dives into local RAG data and web search.
-- **Auditor:** Reviews research and code for security vulnerabilities.
-- **Coder:** Generates hardened, efficient Python scripts based on team findings.
+## ⚙️ Configuration
 
-### **Tools (`tools/`)**
-Extend agent capabilities by adding scripts to the `tools/` folder. Agents load only the tools assigned to them in the config:
-- **`search_duckduckgo.py`**: Web browsing.
-- **`file_read.py` / `file_write.py`**: Restricted local filesystem interaction.
-- **`notifier.py`**: Slack/Discord webhook alerts for Human-in-the-Loop checkpoints.
+### 1. `config.json` (System Settings)
+Controls the global behavior of the machine. Changes are applied on the next agent action.
 
-## ⚙️ Configuration (`team.json`)
 
-The `team.json` file is your mission control. It defines which agents are active, their assigned tools, and their specific tasks.
+| Key | Description | Default |
+| :--- | :--- | :--- |
+| `MODEL_NAME` | The primary LLM model used by agents. | `qwen3.6:latest` |
+| `EMBEDDING_MODEL` | The model used for RAG/Knowledge indexing. | `nomic-embed-text` |
+| `TEMPERATURE` | Controls LLM creativity (0.0 = deterministic). | `0.3` |
+| `MAX_TOKENS` | Maximum response length per agent call. | `4096` |
+| `MAX_RETRIES` | Number of times to retry a failed mission. | `3` |
+| `MISSION_TIMEOUT_SECONDS`| Hard cutoff for total mission duration. | `1800` |
+| `VERBOSE` | Toggles detailed agent "thought" logs. | `true` |
 
-```json
-{
-  "mission_name": "Secure API Development",
-  "active_agents": [
-    {
-      "name": "librarian",
-      "task_description": "Scan and index new materials in the knowledge directory.",
-      "expected_output": "A report confirming the number of files indexed."
-    },
-    {
-      "name": "researcher",
-      "tools": ["search_duckduckgo"],
-      "task_description": "Search for best practices regarding FastAPI local deployment.",
-      "expected_output": "A technical summary report."
-    },
-    {
-      "name": "coder",
-      "tools": ["file_write"],
-      "human_approval": true,
-      "task_description": "Write a secure main.py to the /output folder.",
-      "expected_output": "A functional Python script."
-    }
-  ]
-}
-```
+### 2. `team.json` (Agent Definitions)
+Defines the "Who" and "What" of your current mission.
+- **active_agents**: A list of agent objects including their `name`, `task_description`, and assigned `tools`.
 
-## 🛡️ Security Architecture: Safe Mode vs. Standard Mode
+### 3. `.env` (Infrastructure)
+Used for fixed networking and boot-level security.
+- `LITELLM_PORT`: Port for the LiteLLM proxy (default `4000`).
+- `UI_PORT`: Port for the Open WebUI (default `3011`).
+- `WEBUI_SECRET_KEY`: Security key for the WebUI session.
 
-The Architect Stack features a parallel tool and agent architecture, allowing you to toggle between "Sandboxed" and "Full Access" modes via `team.json`.
+---
 
-### Hardened Tools (`tools/`)
-- **`file_write_safe.py`**: Restricts all file operations strictly to the `/app/output` directory.
-- **`terminal_safe.py`**: A hardened execution environment that only permits `python` and `pytest` commands, blocking path traversal (`..`) and absolute paths.
-- **`auditor_safe.py`**: A specialized persona that enforces directory boundaries and "Zero Trust" pathing.
+## 🔌 Plugins
 
-## 📚 Autonomous Knowledge Ingestion
+The Architect supports "Hot-Swappable" Python plugins. Drop a `.py` file into the `/plugins` directory to enable new capabilities.
 
-The system now features a **"Zero-Maintenance" RAG pipeline**:
-- **Dynamic Loaders**: Drop any file into `/knowledge`. The system automatically maps it to a corresponding loader in `loaders/` based on extension (e.g., `.yaml`, `.soap`, `.xlsx`, `.md`).
-- **Librarian Integration**: Including the `librarian` agent in your `active_agents` list triggers an automatic knowledge refresh pass (`crew.train()`) to ensure the team is working with the most recent data.
+### Discord Bot (`plugins/discord_bot.py`)
+Allows you to interact with agents via Slash Commands.
+- **Identity Enforcement**: Automatically prepends `agent_name: ` to responses.
+- **Interactive**: Supports real-time status updates from the crew.
 
-## 🚨 Notifications & Human-in-the-Loop (HITL)
+### Discord Notifications (`plugins/discord_notifications.py`)
+Provides a `send_notification` tool for outbound system alerts via Webhooks.
 
-Stay informed even when the terminal is out of sight:
-- **Proactive Alerting**: Agents assigned the `notifier` tool will ping your Slack or Discord webhook when they reach a checkpoint.
-- **Manual Intervention**: Set `"human_approval": true` in `team.json` to pause the mission for manual feedback or correction via the terminal.
+---
 
-## 📦 Updated Dependencies
-To support advanced document parsing and notifications, ensure your `requirements.txt` includes:
-```text
-crewai[docling]   # For .md, .docx, .pptx, .html
-pandas            # For tabular data (.csv, .xlsx)
-requests          # For Slack/Discord webhooks
-pyyaml            # For .yaml configurations
-```
+## 📚 Knowledge Management
 
-## 👥 Expanded Agent Roster (`agents/`)
+Place any technical documentation (`.txt`, `.pdf`, `.csv`, etc.) into the `/knowledge` directory.
+- The **System Librarian** will automatically detect these files.
+- It uses the corresponding loader in `/loaders` to index the content.
+- Agents with `allow_knowledge_retrieval=True` can then query this data during missions.
 
-You can now orchestrate a full software development lifecycle team:
-- **Librarian**: The data gatekeeper. Refreshes the ChromaDB index before missions start.
-- **Solution Architect**: Designs modular patterns and system logic.
-- **QA Engineer**: Writes and executes `pytest` suites using the Safe Terminal.
-- **Technical Writer**: Generates professional documentation and README updates.
-- **Project Manager**: Coordinates handoffs and ensures mission goals are met.
+---
 
-## 🛠️ Developing New Agents
+## 🛡️ Resilience & Health
 
-Adding a new agent to the Architect Stack is straightforward. Each agent must reside in the `agents/` folder and follow a standard functional signature to remain compatible with the dynamic loader.
+- **Heartbeat**: The system writes to `/tmp/heartbeat` every loop.
+- **Autoheal**: Docker monitors the heartbeat; if the process stalls for more than 5 minutes, the container is automatically restarted.
+- **Idle State**: If a mission reaches `MAX_RETRIES`, the container stays alive in an "Idle" state to allow log inspection and debugging.
 
-### 1. Create the Agent File
-Create a new file in `agent-app/agents/`, for example: `security_expert.py`.
+---
 
-### 2. Implement the `get_agent` Function
-Every agent file **must** include a `get_agent(tools=None)` function. This allows `main.py` to inject dynamically loaded tools from the `tools/` folder based on your `team.json`.
+## 🤝 Contributing
 
-```python
-from crewai import Agent
-import os
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on code standards and plugin development.
 
-def get_agent(tools=None):
-    """
-    Standard signature for The Architect Stack agents.
-    :param tools: A list of tool objects passed by the dynamic loader.
-    """
-    return Agent(
-        role="Security Expert",
-        goal="Ensure all systems follow zero-trust protocols.",
-        backstory="A veteran white-hat hacker specializing in local networks.",
-        # Inherits the local model from your .env
-        llm=f"openai/ollama/{os.getenv('MODEL_NAME')}",
-        base_url="http://litellm:4000/v1",
-        # Assigns the tools provided by team.json
-        tools=tools or [],
-        # Recommended: Enable memory for long-term task consistency
-        memory=True,
-        verbose=True
-    )
-```
-
-### 3. Register in `team.json`
-Once the file is created, you do not need to restart the entire stack. Simply add the agent to your mission configuration:
-
-```json
-{
-  "name": "security_expert",
-  "tools": ["search_duckduckgo", "notifier"],
-  "task_description": "Audit the current mission plan for potential data leaks.",
-  "expected_output": "A security clearance report."
-}
-```
-
-### Key Rules for Agent Parity:
-- **`allow_knowledge_retrieval=True`**: Include this if the agent needs to access the RAG database (ChromaDB) via the Librarian's indexed files.
-- **Sequential Context**: Because the stack uses a sequential process, your new agent will automatically have access to the "thoughts" and outputs of any agents listed before it in the `team.json`.
-
+---
 
 ## 🛡️ License
 
-This project is licensed under the **Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**. 
+This project is [licensed](LICENSE.md) under the **Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**. 
+
+
+*"Ergo, the concordance of thought is established."*
