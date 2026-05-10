@@ -1,13 +1,13 @@
 services:
   service:
-    container_name: agent-smith
+    container_name: ai-the-architect
     build:
       context: .
       dockerfile: Dockerfile
     stdin_open: true
     tty: true
     volumes:
-      - agent-memory:/app/.crewai
+      - ai-memory:/app/.crewai
       - .:/app/config_mount:ro
       - ./plugins:/app/plugins:ro
       - ./output:/app/output
@@ -35,7 +35,7 @@ services:
       autoheal: true
 
   ollama:
-    container_name: agent-ollama
+    container_name: ai-ollama
     image: ollama/ollama:latest
     restart: always
     ports:
@@ -57,7 +57,7 @@ services:
       autoheal: true
 
   litellm:
-    container_name: agent-litellm
+    container_name: ai-litellm
     image: ghcr.io/berriai/litellm:main-latest
     restart: always
     ports:
@@ -73,7 +73,7 @@ services:
       autoheal: true
 
   chromadb:
-    container_name: agent-chromadb
+    container_name: ai-chromadb
     image: chromadb/chroma:latest
     restart: always
     ports:
@@ -87,7 +87,7 @@ services:
       autoheal: true
 
   openwebui:
-    container_name: agent-open-webui
+    container_name: ai-open-webui
     image: ghcr.io/open-webui/open-webui:main
     restart: always
     ports:
@@ -104,7 +104,7 @@ services:
       autoheal: true
 
   autoheal:
-    container_name: agent-autoheal
+    container_name: ai-autoheal
     depends_on:
       - service
     image: willfarrell/autoheal:latest
@@ -117,4 +117,4 @@ services:
       autoheal: true
 
 volumes:
-  agent-memory:
+  ai-memory:
