@@ -1,4 +1,3 @@
 #!/bin/bash
-sudo rm -rf /var/lib/docker/volumes/jenkins_jenkins_data/_data/workspace/the-architect
-sudo rm -rf /var/lib/docker/volumes/jenkins_jenkins_data/_data/workspace/the-architect*
-sudo rm -rf /var/lib/docker/volumes/jenkins_jenkins_data/_data/workspace/the-architect@tmp
+sudo find /var/lib/docker/volumes/jenkins_jenkins_data/_data/workspace -mindepth 1 -type d -exec rm -rf {} +
+
