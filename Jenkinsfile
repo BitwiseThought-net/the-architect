@@ -19,13 +19,12 @@ pipeline {
                     file(credentialsId: "${env.REPO_NAME}-env", variable: 'ENV_SECRET')
                 ]) {
                     script {
-                        // --- PREPARE PLUGINS DIRECTORY ---
-                        // Ensure plugins folder and __init__.py exist so Docker doesn't throw mount errors
+                        // --- PREPARE WORKSPACE ---
                         sh "mkdir -p plugins"
                         sh "touch plugins/__init__.py"
 
-                        sh "[ -f '${ENV_SECRET}' ] && cp '${ENV_SECRET}' .env"
-                        sh "sed -i 's/\\r\$//' .env"
+                        sh "[ -f requirements.txt ] && sed -i 's/\\r\$//' requirements.txt"
+                        sh "[ -f '${ENV_SECRET}' ] && cp '${ENV_SECRET}' .env && sed -i 's/\\r\$//' .env"
 
                         sh '''
                         if [ -f docker-compose.yml ]; then
@@ -37,8 +36,7 @@ pipeline {
                             exit 0
                         fi
                         '''
-                        
-                        // 3. Clean up the .env file after deployment (optional but safer)
+
                         sh "[ -f .env ] && rm .env"
                     }
                 }
