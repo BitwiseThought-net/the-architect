@@ -31,8 +31,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 2m
-    labels:
-      autoheal: true
+#    labels:
+#      autoheal: true
 
   ollama:
     container_name: ai-ollama
@@ -40,6 +40,8 @@ services:
     restart: always
     ports:
       - "11434:11434"
+    environment:
+      - OLLAMA_API_BASE=http://ollama:11434
     env_file:
       - .env
     volumes:
@@ -53,8 +55,8 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    labels:
-      autoheal: true
+#    labels:
+#      autoheal: true
 
   litellm:
     container_name: ai-litellm
@@ -69,8 +71,8 @@ services:
     command: ["--model", "ollama/${MODEL_NAME}", "--port", "4000", "--drop_params"]
     depends_on:
       - ollama
-    labels:
-      autoheal: true
+#    labels:
+#      autoheal: true
 
   chromadb:
     container_name: ai-chromadb
@@ -83,8 +85,8 @@ services:
     environment:
       - IS_PERSISTENT=TRUE
       - ANONYMIZED_TELEMETRY=FALSE
-    labels:
-      autoheal: true
+#    labels:
+#      autoheal: true
 
   openwebui:
     container_name: ai-open-webui
@@ -100,21 +102,21 @@ services:
       - "OPENAI_API_BASE_URL=${LITELLM_BASE_URL}"
     depends_on:
       - ollama
-    labels:
-      autoheal: true
+#    labels:
+#      autoheal: true
 
-  autoheal:
-    container_name: ai-autoheal
-    depends_on:
-      - service
-    image: willfarrell/autoheal:latest
-    restart: always
-    environment:
-      - AUTOHEAL_CONTAINER_LABEL=autoheal
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    labels:
-      autoheal: true
+#  autoheal:
+#    container_name: ai-autoheal
+#    depends_on:
+#      - service
+#    image: willfarrell/autoheal:latest
+#    restart: always
+#    environment:
+#      - AUTOHEAL_CONTAINER_LABEL=autoheal
+#    volumes:
+#      - /var/run/docker.sock:/var/run/docker.sock
+#    labels:
+#      autoheal: true
 
 volumes:
   ai-memory:
