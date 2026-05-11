@@ -9,7 +9,7 @@
   "RETRY_DELAY_SECONDS": 10,
   "MISSION_TIMEOUT_SECONDS": 1800,
   "TOOL_EXEC_TIMEOUT": 30,
-  "LITELLM_URL": "http://agent-litellm:4000/v1",
+  "LITELLM_URL": "http://litellm:4000/v1",
   "OLLAMA_URL": "http://ollama:11434",
   "TEAM_CONFIG": "team.json",
   "SAFE_OUTPUT_DIR": "/app/output",
