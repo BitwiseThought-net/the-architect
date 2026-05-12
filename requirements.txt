@@ -1,4 +1,4 @@
-autogen>=0.2.27
+autogen
 chromadb
 crewai
 crewai[docling]
@@ -6,14 +6,13 @@ crewai[litellm]
 crewai-tools
 duckduckgo-search
 langchain_openai
-langgraph>=0.1.4
-langopt
+langgraph
 odfpy
 ollama
 openpyxl
 pandas
-pydantic>=2.4.2
+pydantic
 pypdf
 pyyaml
 requests
-smolagents>=1.1.0
+smolagents
