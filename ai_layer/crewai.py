@@ -1,9 +1,9 @@
 import os
 from crewai import (
-    Agent as NativeAgent, 
-    Task as NativeTask, 
-    Crew as NativeCrew, 
-    Process as NativeProcess, 
+    Agent as NativeAgent,
+    Task as NativeTask,
+    Crew as NativeCrew,
+    Process as NativeProcess,
     LLM as NativeLLM
 )
 from crewai.tools import tool as native_tool
@@ -12,7 +12,7 @@ from crewai.tools import tool as native_tool
 from crewai_tools import (
     FileReadTool as NativeFileReadTool,
     FileWriterTool as NativeFileWriterTool,
-    EXECTool as NativeEXECTool,
+    CodeInterpreterTool as NativeCodeInterpreterTool, # FIXED: Changed from EXECTool
     DuckDuckGoSearchTool as NativeDuckDuckGoSearchTool
 )
 
@@ -37,7 +37,7 @@ tool = native_tool
 # Bind specific custom/standard tool classes to abstract interface tokens
 FileReadTool = NativeFileReadTool
 FileWriterTool = NativeFileWriterTool
-EXECTool = NativeEXECTool
+EXECTool = NativeCodeInterpreterTool # FIXED: Aliased to maintain orchestrator compatibility
 DuckDuckGoSearchTool = NativeDuckDuckGoSearchTool
 
 # --- KNOWLEDGE LOADER MAPPINGS ---
