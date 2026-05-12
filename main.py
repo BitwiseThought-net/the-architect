@@ -7,7 +7,7 @@ import pkgutil
 import signal
 import plugins  # Requires plugins/__init__.py to exist
 from pathlib import Path
-from crewai import Crew, Task, Process, LLM
+from ai_layer.orchestrator import Crew, Task, Agent, LLM, Process
 from knowledge_manager import get_all_knowledge_sources
 from lib.logger import log_action, log_text, log_warn, log_error
 from lib.utils import (
@@ -78,8 +78,13 @@ def load_agent_and_tools(agent_config, llm):
             return None
             
         agent_module = importlib.import_module(f"agents.{agent_name}")
+        
+        # FIX: Explicitly check for configuration string injection readiness 
+        # frameworks like AutoGen or smolagents accept the LLM definition in their factories directly.
         agent = agent_module.get_agent(tools=all_tools)
-        agent.llm = llm
+        if hasattr(agent, "llm"):
+            agent.llm = llm
+            
         return agent
     except Exception as e:
         log_error(f"Failed to initialize agent {agent_name}: {e}")
@@ -106,9 +111,10 @@ def wait_for_llm(url, model):
 def run_mission():
     update_heartbeat()
     
-    # 1. Infrastructure Setup (Pulled live from config.json)
+    # 1. Config & Infrastructure (Pulled from config.json first)
     model_name = get_config_value("MODEL_NAME", "qwen3.6:latest")
     litellm_url = get_config_value("LITELLM_URL", "http://ai-litellm:4000/v1")
+    project_id = get_config_value("PROJECT_NAME", "ai_architect").lower().replace("-", "_").replace(" ", "_")
     
     try:
         wait_for_llm(litellm_url, model_name)
@@ -159,21 +165,25 @@ def run_mission():
         "config": {
             "model": get_config_value("EMBEDDING_MODEL", "nomic-embed-text"),
             "base_url": get_config_value("OLLAMA_URL", "http://ollama:11434"),
-            "collection_name": f"agent_smith_{int(time.time())}"
+            "collection_name": f"{project_id}_{int(time.time())}"
         }
     }
+
+    # FIX: Safely parse execution sequence variables based on target factory capability
+    execution_process = getattr(Process, "sequential", None) if Process else None
 
     crew = Crew(
         agents=agents_list,
         tasks=tasks_list,
-        process=Process.sequential,
+        process=execution_process,
         verbose=get_config_value("VERBOSE", True),
         memory=False, 
         knowledge_sources=knowledge_sources,
         embedder=embedder_config
     )
 
-    if has_librarian and knowledge_sources:
+    # FIX: Guard training method execution to prevent runtime blockages on alternative builders
+    if has_librarian and knowledge_sources and hasattr(crew, "train"):
         log_action("Librarian detected. Starting training...")
         try:
             update_heartbeat()
@@ -197,7 +207,6 @@ def run_mission():
         except Exception as e:
             clear_mission_timeout()
             log_error(f"Attempt {attempt + 1} failed: {e}")
-            
             if attempt < max_retries - 1:
                 delay = int(get_config_value("RETRY_DELAY_SECONDS", 10))
                 log_warn(f"Retrying mission in {delay} seconds...")
@@ -210,3 +219,4 @@ def run_mission():
 
 if __name__ == "__main__":
     run_mission()
+

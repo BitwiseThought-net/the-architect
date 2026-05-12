@@ -1,4 +1,4 @@
-from crewai.knowledge.source.pdf_knowledge_source import PDFKnowledgeSource
+from ai_layer.orchestrator import Knowledge
 import os
 
 def get_source(file_path):

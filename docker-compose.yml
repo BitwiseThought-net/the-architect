@@ -26,7 +26,7 @@ services:
       - litellm
       - chromadb
     healthcheck:
-      test: ["CMD", "sh", "-c", "[ $$(($(date +%s) - $$(stat -c %Y /tmp/heartbeat))) -lt 300 ]"]
+      test: "sh -c '[ $(($(date +%s) - $(stat -c %Y /tmp/heartbeat))) -lt 300 ]'"
       interval: 1m
       timeout: 10s
       retries: 3

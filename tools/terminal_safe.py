@@ -1,6 +1,6 @@
 import os
 import subprocess
-from crewai.tools import tool
+from ai_layer.orchestrator import tool
 from lib.utils import get_config_value
 
 @tool("safe_terminal_exec")

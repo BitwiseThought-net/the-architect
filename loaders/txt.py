@@ -1,6 +1,20 @@
-from crewai.knowledge.source.text_file_knowledge_source import TextFileKnowledgeSource
 import os
+from ai_layer.orchestrator import Knowledge
 
 def get_source(file_path):
-    filename = os.path.basename(file_path)
-    return TextFileKnowledgeSource(file_paths=[filename])
+    """
+    Initializes and returns a framework-agnostic TXT Knowledge Source.
+    Uses the underlying framework's mapped TextFile processor from the orchestrator.
+    """
+    if not os.path.exists(file_path):
+        return None
+
+    file_name = os.path.basename(file_path)
+
+    if Knowledge and hasattr(Knowledge, "TextFile"):
+        return Knowledge.TextFile(
+            file_path=file_path,
+            metadata={"source": file_name, "type": "txt"}
+        )
+
+    return None

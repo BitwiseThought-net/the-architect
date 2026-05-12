@@ -1,6 +1,6 @@
 import requests
 import os
-from crewai.tools import tool
+from ai_layer.orchestrator import tool
 from lib.utils import get_config_value
 
 # --- PLUGIN METADATA ---
