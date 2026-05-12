@@ -16,7 +16,8 @@ pipeline {
         stage('Deploy') {
             steps {
                 withCredentials([
-                    file(credentialsId: "${env.REPO_NAME}-env", variable: 'ENV_SECRET')
+                    file(credentialsId: "${env.REPO_NAME}-env", variable: 'ENV_SECRET'),
+                    file(credentialsId: "${env.REPO_NAME}-team-json", variable: 'TEAM_JSON')
                 ]) {
                     script {
                         // --- PREPARE PLUGINS DIRECTORY ---
@@ -24,6 +25,7 @@ pipeline {
                         sh "mkdir -p plugins"
                         sh "touch plugins/__init__.py"
 
+                        sh "[ -f '${TEAM_JSON}' ] && cp '${TEAM_JSON}' team.json"
                         sh "[ -f '${ENV_SECRET}' ] && cp '${ENV_SECRET}' .env"
                         sh "sed -i 's/\\r\$//' .env"
 
@@ -39,7 +41,7 @@ pipeline {
                         '''
                         
                         // 3. Clean up the .env file after deployment (optional but safer)
-                        sh "[ -f .env ] && rm .env"
+                        //sh "[ -f .env ] && rm .env"
                     }
                 }
             }
