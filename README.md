@@ -8,7 +8,8 @@
 
 ## 🚀 Key Features
 
-- **The `ai_layer` Abstraction Engine**: A framework-agnostic gateway (`ai_layer/orchestrator.py`) that completely decouples your agent definitions, custom tools, and RAG ingestion from the underlying runtime. Seamlessly switch the entire execution engine across **CrewAI**, **Microsoft AutoGen**, **LangGraph**, or **Hugging Face smolagents** on the fly without a code rebuild or a container restart.
+- **The `ai_layer` Abstraction Engine**: A framework-agnostic gateway (`ai_layer/orchestrator.py`) that completely decouples your agent definitions, custom tools, and RAG ingestion from the underlying runtime.
+- **Hybrid Multi-Framework Swarms**: Mix and match agent orchestration frameworks inside the exact same team pipeline manifest. Assign a CrewAI loop to your researcher, a sandboxed Microsoft AutoGen engine to your coder, and a LangGraph state machine to your tester simultaneously.
 - **Local-First LLM Architecture**: Seamless integration with **Ollama** and **LiteLLM** for full data privacy and no API costs.
 - **Dynamic Configuration**: Modify system settings (`config.json`) and agent team definitions (`team.json`) in real-time without restarting containers.
 - **Terminal Command Interface**: Pass explicit natural language instructions directly to the crew on execution kickoff via command-line string parameters, automatically bypassing static task manifests on demand. Supports both global initial-agent routing and explicit, targeted single-agent commands.
@@ -55,7 +56,7 @@
 1. **Clone the repository:**
    ```bash
    git clone github.com
-   cd ai-architect
+   cd the-architect
    ```
 
 2. **Initialize Configuration:**
@@ -77,14 +78,12 @@
 ## ⚙️ Configuration
 
 ### 1. `config.json` (System Settings)
-Controls the global behavior of the machine. Changes are applied on the next agent action.
-
-
+Controls the global fallback behavior of the machine. Changes are applied on the next agent action.
 
 
 | Key | Description | Default |
 | :--- | :--- | :--- |
-| `AI_FRAMEWORK` | The active multi-agent runtime driver (`crewai`, `autogen`, `langgraph`, `smolagents`). | `"crewai"` |
+| `AI_FRAMEWORK` | Global fallback multi-agent driver if an agent does not explicitly define one. | `"crewai"` |
 | `MODEL_NAME` | The primary LLM model used by agents. | `qwen3.6:latest` |
 | `EMBEDDING_MODEL` | The model used for RAG/Knowledge indexing. | `nomic-embed-text` |
 | `TEMPERATURE` | Controls LLM creativity (0.0 = deterministic). | `0.3` |
@@ -96,8 +95,8 @@ Controls the global behavior of the machine. Changes are applied on the next age
 | `VERBOSE` | Toggles detailed agent "thought" logs. | `true` |
 
 ### 2. `team.json` (Agent Definitions)
-Defines the "Who" and "What" of your current mission.
-- **active_agents**: A list of agent objects including their `name`, `task_description`, and assigned `tools`.
+Defines the framework layout, identities, and tasks of your active hybrid swarm pipeline manifest.
+- **active_agents**: A list of agent objects configuration maps. Include the local `"framework"` target selection switch (`"crewai"`, `"autogen"`, `"langgraph"`, or `"smolagents"`) alongside the agent's `name`, `task_description`, and assigned `tools` array string keys.
 
 ### 3. `.env` (Infrastructure)
 Used for fixed networking and boot-level security.
@@ -112,27 +111,27 @@ Used for fixed networking and boot-level security.
 
 You can bypass the static task files inside `team.json` and pass direct instructions to your agent crew straight from your shell console panel. 
 
-The main orchestration engine intercepts the command string on the fly, applies it as a dynamic structural override on the targeted processing task, and cascades relevant context down the sequential pipeline stack across all target framework backends.
+The main orchestration engine intercepts the command string on the fly, applies it as a dynamic structural override on the targeted processing task, and cascades relevant context down the cross-framework sequential pipeline stack regardless of individual agent backend engines.
 
 ### 1. Global Initial Override (Legacy Fallback)
 If no target agent flags are specified, the command string automatically intercepts and overrides the **very first agent** listed in your `team.json` manifest:
 ```bash
-docker exec -it ai-architect python main.py "YOUR_INSTRUCTION_HERE"
+docker exec -it the-architect python main.py "YOUR_INSTRUCTION_HERE"
 ```
 
 ### 2. Targeted Agent Override (Flag Routing)
 To bypass a task for one specific agent while keeping the baseline operational parameters intact for the remainder of your crew, inject the `--agent` parameter flag layout:
 ```bash
-docker exec -it ai-architect python main.py --agent <agent_name> "YOUR_TARGETED_INSTRUCTION_HERE"
+docker exec -it the-architect python main.py --agent <agent_name> "YOUR_TARGETED_INSTRUCTION_HERE"
 ```
 
 #### Execution Routing Examples:
 ```bash
 # Target only the Coder agent explicitly
-docker exec -it ai-architect python main.py --agent coder "Implement a strict token validation middleware loop inside auth.py"
+docker exec -it the-architect python main.py --agent coder "Implement a strict token validation middleware loop inside auth.py"
 
 # Target only the Researcher agent explicitly
-docker exec -it ai-architect python main.py --agent researcher "Find the latest CVE patches released for SQLite in 2026"
+docker exec -it the-architect python main.py --agent researcher "Find the latest CVE patches released for SQLite in 2026"
 ```
 
 ---
@@ -190,4 +189,3 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 This project is [licensed](LICENSE.md) under the **Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**.
 
 *"Ergo, the concordance of thought is established."*
-

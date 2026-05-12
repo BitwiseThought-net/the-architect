@@ -1,6 +1,6 @@
 # Contributing to The Architect
 
-Thank you for your interest in contributing to **The Architect** (`ai-architect`). This document establishes the strict architectural constraints, code style standards, and framework abstraction protocols required to keep the system decoupled, hot-swappable, and secure.
+Thank you for your interest in contributing to **The Architect** (`the-architect`). This document establishes the strict architectural constraints, code style standards, and framework abstraction protocols required to keep the system decoupled, hot-swappable, and secure.
 
 ---
 

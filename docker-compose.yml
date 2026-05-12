@@ -1,6 +1,6 @@
 services:
   service:
-    container_name: ai-architect
+    container_name: the-architect
     build:
       context: .
       dockerfile: Dockerfile

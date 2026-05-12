@@ -1,4 +1,6 @@
 {
+  "PROJECT_NAME": "AI Architect",
+  "AI_FRAMEWORK": "crewai",
   "MODEL_NAME": "qwen3.6:latest",
   "EMBEDDING_MODEL": "nomic-embed-text",
   "TEMPERATURE": 0.3,

@@ -1,2 +1,2 @@
 #!/bin/bash
-docker logs -f ai-architect
+docker logs -f the-architect
