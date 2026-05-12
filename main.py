@@ -6,7 +6,6 @@ import requests
 import pkgutil
 import sys
 from pathlib import Path
-from ai_layer.orchestrator import Crew, Task, Agent, LLM, Process
 from knowledge_manager import get_all_knowledge_sources
 from lib.logger import log_action, log_text, log_warn, log_error
 from lib.utils import (
@@ -18,36 +17,34 @@ from lib.utils import (
 )
 
 def load_agent_and_tools(agent_config, llm):
+    """
+    Dynamically boot-straps an individual agent using its specifically defined
+    framework engine while compiling its custom tool and plugin arrays.
+    """
     agent_name = agent_config['name']
+
+    # RESOLUTION PRIORITY: agent local framework > config.json global framework > default fallback
+    framework = agent_config.get("framework", get_config_value("AI_FRAMEWORK", "crewai")).lower()
+    log_text(f"Initializing agent '{agent_name}' using framework: [{framework}]")
+
+    # Dynamically resolve the abstract orchestrator factory for this specific agent's target framework
+    try:
+        _layer = importlib.import_module(f"ai_layer.{framework}")
+    except ImportError:
+        log_warn(f"Factory for '{framework}' not found. Falling back to crewai engine wrapper.")
+        _layer = importlib.import_module("ai_layer.crewai")
+
     all_tools = []
 
-    # 1. Load standard tools from team.json
+    # 1. Load standard tools from team.json mapped to the custom framework factory
     for t_name in agent_config.get('tools', []):
         try:
             tool_module = importlib.import_module(f"tools.{t_name}")
             all_tools.extend(tool_module.get_tools())
         except ImportError:
-            log_warn(f"Tool {t_name} not found in tools folder at {Path.cwd()}/tools.")
+            log_warn(f"Tool {t_name} not found in tools folder.")
 
-    # 2. DYNAMIC JSON PLUGIN INJECTION (Legacy/Migration support)
-    active_json_plugins = get_active_plugins()
-    plugin_tool_map = {
-        "web_search": "search_duckduckgo"
-    }
-
-    for feature_id, plugin_info in active_json_plugins.items():
-        target_agents = plugin_info.get("enabled_for", ["*"])
-        if agent_name in target_agents or "*" in target_agents:
-            if feature_id in plugin_tool_map:
-                try:
-                    tool_module = importlib.import_module(f"tools.{plugin_tool_map[feature_id]}")
-                    all_tools.extend(tool_module.get_tools())
-                    log_text(f"JSON Plugin '{feature_id}' enabled for: {agent_name}")
-                except ImportError:
-                    pass
-
-    # 3. DYNAMIC PYTHON PLUGIN LOADER (NameError Fix)
-    # Safely look up the package path from the filesystem or module registry
+    # 2. DYNAMIC PYTHON PLUGIN LOADER
     plugins_dir = os.path.join(os.path.dirname(__file__), "plugins")
     if os.path.exists(plugins_dir):
         try:
@@ -65,30 +62,44 @@ def load_agent_and_tools(agent_config, llm):
                                 targets = reg_data.get("enabled_for", ["*"])
                                 if agent_name in targets or "*" in targets:
                                     all_tools.extend(reg_data.get("tools", []))
-                                    log_text(f"🔌 Python Plugin '{module_name}' active for {agent_name}")
 
                                     if reg_data.get("identity_prefix"):
                                         agent_config['backstory'] += f"\n\nIMPORTANT: Start every response with '{agent_name}: '."
                     except Exception as e:
                         log_warn(f"Skipping Python plugin {module_name}: {e}")
         except ImportError:
-            log_warn("Plugins directory exists but could not be imported as a Python package.")
+            pass
 
-    # 4. Finalize Agent (Safety check for physical file existence)
+    # 3. Finalize Agent using the resolved local layer primitives
     try:
         agent_path = os.path.join("agents", f"{agent_name}.py")
         if not os.path.exists(agent_path):
             log_error(f"Agent file missing: {agent_path}")
-            return None
+            return None, None
 
         agent_module = importlib.import_module(f"agents.{agent_name}")
-        agent = agent_module.get_agent(tools=all_tools)
-        if hasattr(agent, "llm"):
-            agent.llm = llm
-        return agent
+
+        # Build the native LLM wrapper through the specific isolated framework factory block
+        native_llm = _layer.LLM(
+            model=llm_config["model"],
+            base_url=llm_config["base_url"],
+            api_key=llm_config["api_key"],
+            temperature=llm_config["temperature"],
+            max_tokens=llm_config["max_tokens"]
+        )
+
+        # Instantiate the explicit abstract agent class layout from the factory
+        agent = _layer.Agent(
+            role=agent_config.get("role", agent_name),
+            goal=agent_config.get("task_description", "Execute mission assignments"),
+            backstory=agent_config.get("backstory", f"Expert {agent_name} operative."),
+            llm=native_llm,
+            tools=all_tools
+        )
+        return agent, _layer
     except Exception as e:
-        log_error(f"Failed to initialize agent {agent_name}: {e}")
-        return None
+        log_error(f"Failed to initialize multi-framework agent {agent_name}: {e}")
+        return None, None
 
 def wait_for_llm(url, model):
     log_action(f"Verifying {model} is ready in LiteLLM...")
@@ -103,12 +114,12 @@ def wait_for_llm(url, model):
                     log_text(f"Model {model} confirmed ready!")
                     break
         except Exception: pass
-
         if time.time() - start_time > 600:
             raise TimeoutError(f"LiteLLM timeout for {model}")
         time.sleep(15)
 
 def run_mission():
+    global llm_config
     update_heartbeat()
 
     # Advanced Terminal Argument Parsing for targeted execution
@@ -124,7 +135,7 @@ def run_mission():
             terminal_instruction = sys.argv[1]
             log_action(f"📥 Global terminal instruction received (routing to initial agent): '{terminal_instruction}'")
 
-    # 1. Config & Infrastructure
+    # 1. Config Pull & Global Parameter Compiling
     model_name = get_config_value("MODEL_NAME", "qwen3.6:latest")
     litellm_url = get_config_value("LITELLM_URL", "http://ai-litellm:4000/v1")
     project_id = get_config_value("PROJECT_NAME", "ai_architect").lower().replace("-", "_").replace(" ", "_")
@@ -134,13 +145,14 @@ def run_mission():
     except TimeoutError as e:
         log_error(str(e)); return
 
-    custom_llm = LLM(
-        model=f"ollama/{model_name}",
-        base_url=litellm_url,
-        api_key=get_config_value("OPENAI_API_KEY", "sk-local-1234"),
-        temperature=float(get_config_value("TEMPERATURE", 0.3)),
-        max_tokens=get_config_value("MAX_TOKENS", 4096)
-    )
+    # Hydrate intermediate configuration dict mapping parameter values to factories
+    llm_config = {
+        "model": f"ollama/{model_name}",
+        "base_url": litellm_url,
+        "api_key": get_config_value("OPENAI_API_KEY", "sk-local-1234"),
+        "temperature": float(get_config_value("TEMPERATURE", 0.3)),
+        "max_tokens": get_config_value("MAX_TOKENS", 4096)
+    }
 
     # 2. Team Assembly
     team_file = get_config_value("TEAM_CONFIG", "team.json")
@@ -155,14 +167,16 @@ def run_mission():
 
     knowledge_sources = get_all_knowledge_sources()
     agents_list, tasks_list = [], []
-    has_librarian = False
+
+    # Latch variable tracking the layer factory configuration of the final execution step
+    master_layer = None
 
     active_agents = team_data.get('active_agents', [])
     for idx, item in enumerate(active_agents):
-        agent = load_agent_and_tools(item, custom_llm)
+        agent, current_layer = load_agent_and_tools(item, None)
         if agent:
             agents_list.append(agent)
-            if item['name'] == "librarian": has_librarian = True
+            master_layer = current_layer # Latches to final compiled step execution engine module
 
             task_description = item.get('task_description')
             expected_output = item.get('expected_output')
@@ -172,50 +186,30 @@ def run_mission():
 
             if is_explicit_match or is_legacy_match:
                 task_description = f"Execute user terminal instruction: {terminal_instruction}"
-                expected_output = "Provide the complete output requested by the user command."
+                expected_output = "Provide complete terminal request output summary package."
                 log_text(f"🎯 Dynamic instruction override applied explicitly to: {item['name']}")
 
-            tasks_list.append(Task(
+            # Build the custom abstract Task class wrapper inside the respective local module layer
+            task_instance = current_layer.Task(
                 description=task_description,
                 expected_output=expected_output,
-                agent=agent,
-                human_input=item.get('human_approval', False)
-            ))
+                agent=agent
+            )
+            tasks_list.append(task_instance)
 
     if not agents_list:
         log_error("No agents could be loaded. Mission aborted."); return
 
-    # 3. Crew Configuration
-    embedder_config = {
-        "provider": "ollama",
-        "config": {
-            "model": get_config_value("EMBEDDING_MODEL", "nomic-embed-text"),
-            "base_url": get_config_value("OLLAMA_URL", "http://ollama:11434"),
-            "collection_name": f"{project_id}_{int(time.time())}"
-        }
-    }
-
-    execution_process = getattr(Process, "sequential", None) if Process else None
-
-    crew = Crew(
+    # 3. Hybrid Crew Setup & Final Handoff Compilation
+    # The final master orchestration manager coordinates multi-framework string handoffs sequentially
+    crew = master_layer.Crew(
         agents=agents_list,
         tasks=tasks_list,
-        process=execution_process,
-        verbose=get_config_value("VERBOSE", True),
-        memory=False,
-        knowledge_sources=knowledge_sources,
-        embedder=embedder_config
+        verbose=get_config_value("VERBOSE", True)
     )
 
-    if has_librarian and knowledge_sources and hasattr(crew, "train"):
-        log_action("Librarian detected. Starting training...")
-        try:
-            update_heartbeat()
-            crew.train(n_iterations=1, filename="training_data.pkl", inputs={})
-        except Exception: pass
-
-    # 4. Mission Kickoff with Retry Logic
-    log_action("Starting mission kickoff...")
+    # 4. Hybrid Mission Kickoff with Retry Logic
+    log_action("Starting hybrid multi-framework mission kickoff...")
     max_retries = int(get_config_value("MAX_RETRIES", 3))
 
     for attempt in range(max_retries):
