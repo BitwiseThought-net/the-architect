@@ -2,50 +2,43 @@
 
 "Your life is the sum of a remainder of an unbalanced equation inherent to the programming of the matrix."
 
-**The Architect** is a hardened, production-ready autonomous agent orchestration framework built on **CrewAI**. It is designed to manage complex multi-agent workflows with local LLM integration, dynamic "on-the-fly" configuration, and a modular plugin system for interactive communication via Discord.
+**The Architect** (configured inside the repository as `ai-architect`) is a hardened, production-ready autonomous agent orchestration framework built on **CrewAI**. It is designed to manage complex multi-agent workflows with local LLM integration, dynamic "on-the-fly" configuration, and a modular plugin system for interactive communication via Discord.
+
+---
 
 ## 🚀 Key Features
 
+- **The `ai_layer` Abstraction Engine**: A framework-agnostic gateway (`ai_layer/orchestrator.py`) that completely decouples your agent definitions, custom tools, and RAG ingestion from the underlying runtime. Seamlessly switch the entire execution engine across **CrewAI**, **Microsoft AutoGen**, **LangGraph**, or **Hugging Face smolagents** on the fly without a code rebuild or a container restart.
 - **Local-First LLM Architecture**: Seamless integration with **Ollama** and **LiteLLM** for full data privacy and no API costs.
 - **Dynamic Configuration**: Modify system settings (`config.json`) and agent team definitions (`team.json`) in real-time without restarting containers.
 - **Modular Plugin System**: Self-contained Python plugins (e.g., Discord Bots, Notifications) that register tools and identity rules automatically.
 - **System Librarian**: Automated RAG (Retrieval-Augmented Generation) indexing that synchronizes local documentation from the `/knowledge` folder into ChromaDB.
+- **Resilient Folder Bootstrapping**: Built-in total safety checks across `agents/`, `knowledge/`, and `loaders/` folders. The machine gracefully bypasses empty directories or missing handlers without crashing your active execution pipelines with unhandled Python exceptions.
 - **Hardened Execution**: Built-in retry logic, mission-level timeouts, and heartbeat monitoring for Docker auto-healing.
 - **Sandboxed Execution**: Specialized tools for safe Python and Pytest execution within restricted directories.
 
 ---
 
-## 🔄 Execution Lifecycle
-1. **Infrastructure Check**: The system verifies that LiteLLM is ready and models are pulled.
-2. **Knowledge Sync**: The **Librarian** scans `/knowledge` and updates the vector database.
-3. **Team Assembly**: `team.json` is parsed, and agents are initialized with their tools and plugins.
-4. **Mission Kickoff**: The crew executes tasks sequentially.
-5. **Recovery/Idle**: If a task fails, the system retries based on `MAX_RETRIES` before entering a debug-friendly idle state.
+## 📂 Project Structure Map
 
----
-
-## 🔒 The Sandbox Environment
-To ensure system integrity, **The Architect** employs a "Safe-by-Design" approach for technical tasks:
-- **Restricted Writes**: The `file_write_safe` tool strictly enforces that files are only written to the `/app/output` directory.
-- **Command Whitelisting**: `terminal_safe` only permits `python` and `pytest` commands to prevent arbitrary shell execution.
-- **Path Protection**: Any attempt at path traversal (`../`) is intercepted and blocked by the security auditors.
-
----
-
-## 🛠 Debugging & Interaction
-- **Live Logs**: View agent thoughts in real-time: `docker logs -f ai-architect`.
-- **Shell Access**: To inspect the container environment: `docker exec -it ai-architect /bin/bash`.
-- **Web UI**: Access the Open WebUI at `http://localhost:3011` to chat with your models directly outside of the agent workflow.
-
----
-
-## 📂 Project Structure
-- `agents/`: Python files defining agent roles (e.g., `coder.py`, `researcher.py`).
-- `tools/`: Custom Python tools available to agents (e.g., `terminal_safe.py`).
-- `loaders/`: File processors for the System Librarian (e.g., `pdf.py`, `csv.py`).
-- `plugins/`: Self-contained feature modules (e.g., Discord integration).
-- `knowledge/`: Raw data files (PDFs, TXT) for RAG indexing.
-- `output/`: The designated sandbox where agents save mission results.
+```ignore
+.
+├── ai_layer/              # Framework Agnostic Factory Package
+│   ├── __init__.py        # Package token initializer
+│   ├── orchestrator.py    # Runtime manager & routing hub
+│   ├── crewai.py          # Native CrewAI engine connector
+│   ├── autogen.py         # AutoGen conversational adapter
+│   ├── langgraph.py       # LangGraph state machine wrapper
+│   └── smolagents.py      # smolagents local execution node
+├── agents/                # Unified Agent Persona Scripts (Framework Agnostic)
+├── tools/                 # Framework Agnostic Custom Tool Libraries
+├── loaders/               # Document processors for the System Librarian
+├── plugins/               # Hot-swappable functional feature packages
+├── knowledge/             # Raw ingestion assets (PDF, CSV, TXT, XML)
+├── output/                # Secure host-mapped sandbox execution workspace
+├── main.py                # Main workflow coordinator
+└── docker-compose.yml     # Multi-container service matrix
+```
 
 ---
 
@@ -57,9 +50,10 @@ To ensure system integrity, **The Architect** employs a "Safe-by-Design" approac
 - **Jenkins** (optional, for CI/CD deployment)
 
 ### Setup
+
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com
+   git clone github.com
    cd ai-architect
    ```
 
@@ -87,12 +81,15 @@ Controls the global behavior of the machine. Changes are applied on the next age
 
 | Key | Description | Default |
 | :--- | :--- | :--- |
+| `AI_FRAMEWORK` | The active multi-agent runtime driver (`crewai`, `autogen`, `langgraph`, `smolagents`). | `"crewai"` |
 | `MODEL_NAME` | The primary LLM model used by agents. | `qwen3.6:latest` |
 | `EMBEDDING_MODEL` | The model used for RAG/Knowledge indexing. | `nomic-embed-text` |
 | `TEMPERATURE` | Controls LLM creativity (0.0 = deterministic). | `0.3` |
 | `MAX_TOKENS` | Maximum response length per agent call. | `4096` |
 | `MAX_RETRIES` | Number of times to retry a failed mission. | `3` |
 | `MISSION_TIMEOUT_SECONDS`| Hard cutoff for total mission duration. | `1800` |
+| `TOOL_EXEC_TIMEOUT` | Hard sandbox execution duration threshold inside the terminal runner. | `30` |
+| `SAFE_OUTPUT_DIR` | Enforced target path limit where agents can manipulate files. | `"/app/output"` |
 | `VERBOSE` | Toggles detailed agent "thought" logs. | `true` |
 
 ### 2. `team.json` (Agent Definitions)
@@ -104,6 +101,7 @@ Used for fixed networking and boot-level security.
 - `LITELLM_PORT`: Port for the LiteLLM proxy (default `4000`).
 - `UI_PORT`: Port for the Open WebUI (default `3011`).
 - `WEBUI_SECRET_KEY`: Security key for the WebUI session.
+- `OLLAMA_BASE_URL` & `LITELLM_BASE_URL`: Inter-container internal bridge network addresses.
 
 ---
 
@@ -113,26 +111,37 @@ The Architect supports "Hot-Swappable" Python plugins. Drop a `.py` file into th
 
 ### Discord Bot (`plugins/discord_bot.py`)
 Allows you to interact with agents via Slash Commands.
-- **Identity Enforcement**: Automatically prepends `agent_name: ` to responses.
-- **Interactive**: Supports real-time status updates from the crew.
+- **Identity Enforcement**: Automatically prepends `agent_name: ` to responses, ensuring strict identification protocol formatting.
+- **Direct API Routing**: Bypasses loose webhooks to process interactive statements securely using a formal Bot Token.
 
 ### Discord Notifications (`plugins/discord_notifications.py`)
 Provides a `send_notification` tool for outbound system alerts via Webhooks.
+- Handles high-priority administrative pushes, general status changes, and final completed mission reports entirely out of a self-contained code module.
+
+---
+
+## 🔒 The Sandbox Environment
+
+To ensure absolute system integrity during technical code execution steps, **The Architect** employs a layered, "Safe-by-Design" environment:
+- **Restricted Writes**: The custom file tools strictly enforce that file manipulations are directed exclusively toward the `/app/output` directory.
+- **Command Whitelisting**: The safe terminal runner only permits execution structures beginning with `python `, `pytest `, or `python3 ` to block arbitrary shell exploits.
+- **Traversal Prevention**: Inputs containing malicious traversal characters (`../`) or absolute path indicators are instantly caught and rejected.
 
 ---
 
 ## 📚 Knowledge Management
 
-Place any technical documentation (`.txt`, `.pdf`, `.csv`, etc.) into the `/knowledge` directory.
-- The **System Librarian** will automatically detect these files.
+Place any technical documentation (`.txt`, `.pdf`, `.csv`, `.json`, `.xml`, etc.) into the `/knowledge` directory.
+- The **System Librarian** will automatically detect these files on kickoff.
 - It uses the corresponding loader in `/loaders` to index the content.
-- Agents with `allow_knowledge_retrieval=True` can then query this data during missions.
+- Framework-agnostic mapping abstractions automatically direct layout formats like XML or legacy document targets through optimized ingestion schemas (such as unified `Docling` layers).
+- Agents with `allow_knowledge_retrieval=True` can then query this data during missions regardless of which active orchestration backend is running.
 
 ---
 
-## 🛡️ Resilience & Health
+## 🔄 Resilience & Health
 
-- **Heartbeat**: The system writes to `/tmp/heartbeat` every loop.
+- **Heartbeat**: The system writes to `/tmp/heartbeat` every loop pass.
 - **Autoheal**: Docker monitors the heartbeat; if the process stalls for more than 5 minutes, the container is automatically restarted.
 - **Idle State**: If a mission reaches `MAX_RETRIES`, the container stays alive in an "Idle" state to allow log inspection and debugging.
 
@@ -140,15 +149,12 @@ Place any technical documentation (`.txt`, `.pdf`, `.csv`, etc.) into the `/know
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on code standards and plugin development.
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on code standards, framework abstraction protocols, and plugin development.
 
 ---
 
 ## 🛡️ License
 
-This project is [licensed](LICENSE.md) under the **Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**. 
-
+This project is [licensed](LICENSE.md) under the **Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**.
 
 *"Ergo, the concordance of thought is established."*
-
-
