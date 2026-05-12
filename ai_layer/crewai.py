@@ -1,5 +1,6 @@
 import os
 import subprocess
+import requests
 from crewai import (
     Agent as NativeAgent,
     Task as NativeTask,
@@ -9,11 +10,10 @@ from crewai import (
 )
 from crewai.tools import tool as native_tool
 
-# Import stable native tools to satisfy core framework dependencies
+# Import only the stable core file interaction tools
 from crewai_tools import (
     FileReadTool as NativeFileReadTool,
-    FileWriterTool as NativeFileWriterTool,
-    DuckDuckGoSearchTool as NativeDuckDuckGoSearchTool
+    FileWriterTool as NativeFileWriterTool
 )
 
 # Import explicit knowledge source classes utilized by your loaders/ directory
@@ -35,17 +35,14 @@ tool = native_tool
 # --- TOOL BINDINGS ---
 FileReadTool = NativeFileReadTool
 FileWriterTool = NativeFileWriterTool
-DuckDuckGoSearchTool = NativeDuckDuckGoSearchTool
 
 # --- INLINE SECURE SHELL EXECUTION FALLBACK ---
-# Re-maps raw subprocess utilities to a stable tool class to avoid library drift crashes
 class NativeShellInterpreter:
     def __init__(self):
         self.name = "terminal_execution_tool"
         self.description = "Executes arbitrary shell commands inside the application workspace container environment."
 
     def _run(self, command: str) -> str:
-        """Executes terminal parameters safely and returns output packages."""
         try:
             res = subprocess.run(
                 command,
@@ -60,8 +57,29 @@ class NativeShellInterpreter:
         except Exception as e:
             return f"Execution Failed: {str(e)}"
 
-# Bind the stable inline executor class to the standard abstract token interface
 EXECTool = NativeShellInterpreter
+
+# --- INLINE SECURE SEARCH FALLBACK ---
+# Bypasses version mismatches by executing requests against DuckDuckGo's HTML fallback endpoint
+class NativeDuckDuckGoSearch:
+    def __init__(self):
+        self.name = "duckduckgo_search"
+        self.description = "Search the web for real-time technical documentation, requirements, and standards."
+
+    def _run(self, query: str) -> str:
+        """Executes an unauthenticated search query pass against the public index."""
+        url = "duckduckgo.com"
+        headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/119.0"}
+        try:
+            response = requests.post(url, data={"q": query}, headers=headers, timeout=10)
+            if response.status_code == 200:
+                # Returns raw scraped context string elements for LLM semantic processing
+                return response.text[:8000]
+            return f"⚠️ Search index rejected query with status: {response.status_code}"
+        except Exception as e:
+            return f"❌ Search execution failed: {str(e)}"
+
+DuckDuckGoSearchTool = NativeDuckDuckGoSearch
 
 # --- KNOWLEDGE LOADER MAPPINGS ---
 class Knowledge:
