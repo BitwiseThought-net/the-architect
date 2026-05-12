@@ -11,6 +11,7 @@
 - **The `ai_layer` Abstraction Engine**: A framework-agnostic gateway (`ai_layer/orchestrator.py`) that completely decouples your agent definitions, custom tools, and RAG ingestion from the underlying runtime. Seamlessly switch the entire execution engine across **CrewAI**, **Microsoft AutoGen**, **LangGraph**, or **Hugging Face smolagents** on the fly without a code rebuild or a container restart.
 - **Local-First LLM Architecture**: Seamless integration with **Ollama** and **LiteLLM** for full data privacy and no API costs.
 - **Dynamic Configuration**: Modify system settings (`config.json`) and agent team definitions (`team.json`) in real-time without restarting containers.
+- **Terminal Command Interface**: Pass explicit natural language instructions directly to the crew on execution kickoff via command-line string parameters, automatically bypassing static task manifests on demand. Supports both global initial-agent routing and explicit, targeted single-agent commands.
 - **Modular Plugin System**: Self-contained Python plugins (e.g., Discord Bots, Notifications) that register tools and identity rules automatically.
 - **System Librarian**: Automated RAG (Retrieval-Augmented Generation) indexing that synchronizes local documentation from the `/knowledge` folder into ChromaDB.
 - **Resilient Folder Bootstrapping**: Built-in total safety checks across `agents/`, `knowledge/`, and `loaders/` folders. The machine gracefully bypasses empty directories or missing handlers without crashing your active execution pipelines with unhandled Python exceptions.
@@ -79,6 +80,8 @@
 Controls the global behavior of the machine. Changes are applied on the next agent action.
 
 
+
+
 | Key | Description | Default |
 | :--- | :--- | :--- |
 | `AI_FRAMEWORK` | The active multi-agent runtime driver (`crewai`, `autogen`, `langgraph`, `smolagents`). | `"crewai"` |
@@ -102,6 +105,35 @@ Used for fixed networking and boot-level security.
 - `UI_PORT`: Port for the Open WebUI (default `3011`).
 - `WEBUI_SECRET_KEY`: Security key for the WebUI session.
 - `OLLAMA_BASE_URL` & `LITELLM_BASE_URL`: Inter-container internal bridge network addresses.
+
+---
+
+## 💻 Terminal Command Interface
+
+You can bypass the static task files inside `team.json` and pass direct instructions to your agent crew straight from your shell console panel. 
+
+The main orchestration engine intercepts the command string on the fly, applies it as a dynamic structural override on the targeted processing task, and cascades relevant context down the sequential pipeline stack across all target framework backends.
+
+### 1. Global Initial Override (Legacy Fallback)
+If no target agent flags are specified, the command string automatically intercepts and overrides the **very first agent** listed in your `team.json` manifest:
+```bash
+docker exec -it ai-architect python main.py "YOUR_INSTRUCTION_HERE"
+```
+
+### 2. Targeted Agent Override (Flag Routing)
+To bypass a task for one specific agent while keeping the baseline operational parameters intact for the remainder of your crew, inject the `--agent` parameter flag layout:
+```bash
+docker exec -it ai-architect python main.py --agent <agent_name> "YOUR_TARGETED_INSTRUCTION_HERE"
+```
+
+#### Execution Routing Examples:
+```bash
+# Target only the Coder agent explicitly
+docker exec -it ai-architect python main.py --agent coder "Implement a strict token validation middleware loop inside auth.py"
+
+# Target only the Researcher agent explicitly
+docker exec -it ai-architect python main.py --agent researcher "Find the latest CVE patches released for SQLite in 2026"
+```
 
 ---
 
@@ -158,3 +190,4 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 This project is [licensed](LICENSE.md) under the **Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**.
 
 *"Ergo, the concordance of thought is established."*
+
