@@ -9,9 +9,9 @@ from pathlib import Path
 from knowledge_manager import get_all_knowledge_sources
 from lib.logger import log_action, log_text, log_warn, log_error
 from lib.utils import (
-    update_heartbeat,
-    get_config_value,
-    set_mission_timeout,
+    update_heartbeat, 
+    get_config_value, 
+    set_mission_timeout, 
     clear_mission_timeout,
     get_active_plugins
 )
@@ -22,21 +22,30 @@ def load_agent_and_tools(agent_config, llm):
     framework engine while compiling its custom tool and plugin arrays.
     """
     agent_name = agent_config['name']
-
-    # RESOLUTION PRIORITY: agent local framework > config.json global framework > default fallback
     framework = agent_config.get("framework", get_config_value("AI_FRAMEWORK", "crewai")).lower()
-    log_text(f"Initializing agent '{agent_name}' using framework: [{framework}]")
+    
+    ai_layer_dir = os.path.join(os.path.dirname(__file__), "ai_layer")
+    target_factory_path = os.path.join(ai_layer_dir, f"{framework}.py")
+    fallback_factory_path = os.path.join(ai_layer_dir, "crewai.py")
 
-    # Dynamically resolve the abstract orchestrator factory for this specific agent's target framework
+    if os.path.exists(target_factory_path):
+        factory_module_string = f"ai_layer.{framework}"
+    else:
+        log_warn(f"Factory file missing for '{framework}' at {target_factory_path}. Falling back to crewai.")
+        if not os.path.exists(fallback_factory_path):
+            log_error(f"Critical Error: Baseline factory 'ai_layer/crewai.py' is missing entirely.")
+            return None, None
+        factory_module_string = "ai_layer.crewai"
+
+    log_text(f"Initializing agent '{agent_name}' using framework: [{factory_module_string}]")
+    
     try:
-        _layer = importlib.import_module(f"ai_layer.{framework}")
-    except ImportError:
-        log_warn(f"Factory for '{framework}' not found. Falling back to crewai engine wrapper.")
-        _layer = importlib.import_module("ai_layer.crewai")
+        _layer = importlib.import_module(factory_module_string)
+    except Exception as e:
+        log_error(f"Failed compilation or execution loop inside module '{factory_module_string}': {e}")
+        return None, None
 
     all_tools = []
-
-    # 1. Load standard tools from team.json mapped to the custom framework factory
     for t_name in agent_config.get('tools', []):
         try:
             tool_module = importlib.import_module(f"tools.{t_name}")
@@ -44,7 +53,6 @@ def load_agent_and_tools(agent_config, llm):
         except ImportError:
             log_warn(f"Tool {t_name} not found in tools folder.")
 
-    # 2. DYNAMIC PYTHON PLUGIN LOADER
     plugins_dir = os.path.join(os.path.dirname(__file__), "plugins")
     if os.path.exists(plugins_dir):
         try:
@@ -55,14 +63,13 @@ def load_agent_and_tools(agent_config, llm):
                     try:
                         module = importlib.import_module(f"plugins.{module_name}")
                         importlib.reload(module)
-
+                        
                         if hasattr(module, 'register'):
                             reg_data = module.register()
                             if reg_data:
                                 targets = reg_data.get("enabled_for", ["*"])
                                 if agent_name in targets or "*" in targets:
                                     all_tools.extend(reg_data.get("tools", []))
-
                                     if reg_data.get("identity_prefix"):
                                         agent_config['backstory'] += f"\n\nIMPORTANT: Start every response with '{agent_name}: '."
                     except Exception as e:
@@ -70,16 +77,14 @@ def load_agent_and_tools(agent_config, llm):
         except ImportError:
             pass
 
-    # 3. Finalize Agent using the resolved local layer primitives
     try:
         agent_path = os.path.join("agents", f"{agent_name}.py")
         if not os.path.exists(agent_path):
             log_error(f"Agent file missing: {agent_path}")
             return None, None
-
+            
         agent_module = importlib.import_module(f"agents.{agent_name}")
-
-        # Build the native LLM wrapper through the specific isolated framework factory block
+        
         native_llm = _layer.LLM(
             model=llm_config["model"],
             base_url=llm_config["base_url"],
@@ -87,8 +92,7 @@ def load_agent_and_tools(agent_config, llm):
             temperature=llm_config["temperature"],
             max_tokens=llm_config["max_tokens"]
         )
-
-        # Instantiate the explicit abstract agent class layout from the factory
+        
         agent = _layer.Agent(
             role=agent_config.get("role", agent_name),
             goal=agent_config.get("task_description", "Execute mission assignments"),
@@ -121,8 +125,7 @@ def wait_for_llm(url, model):
 def run_mission():
     global llm_config
     update_heartbeat()
-
-    # Advanced Terminal Argument Parsing for targeted execution
+    
     target_agent_name = None
     terminal_instruction = None
 
@@ -135,17 +138,15 @@ def run_mission():
             terminal_instruction = sys.argv[1]
             log_action(f"📥 Global terminal instruction received (routing to initial agent): '{terminal_instruction}'")
 
-    # 1. Config Pull & Global Parameter Compiling
     model_name = get_config_value("MODEL_NAME", "qwen3.6:latest")
     litellm_url = get_config_value("LITELLM_URL", "http://ai-litellm:4000/v1")
     project_id = get_config_value("PROJECT_NAME", "ai_architect").lower().replace("-", "_").replace(" ", "_")
-
+    
     try:
         wait_for_llm(litellm_url, model_name)
     except TimeoutError as e:
         log_error(str(e)); return
 
-    # Hydrate intermediate configuration dict mapping parameter values to factories
     llm_config = {
         "model": f"ollama/{model_name}",
         "base_url": litellm_url,
@@ -154,10 +155,9 @@ def run_mission():
         "max_tokens": get_config_value("MAX_TOKENS", 4096)
     }
 
-    # 2. Team Assembly
     team_file = get_config_value("TEAM_CONFIG", "team.json")
     if not os.path.exists(team_file):
-        log_error(f"Mission aborted: {team_file} not found at {Path.cwd()}."); return
+        log_error(f"Mission aborted: {team_file} not found."); return
 
     try:
         with open(team_file, 'r') as f:
@@ -166,74 +166,98 @@ def run_mission():
         log_error(f"Malformed team.json: {e}"); return
 
     knowledge_sources = get_all_knowledge_sources()
-    agents_list, tasks_list = [], []
-
-    # Latch variable tracking the layer factory configuration of the final execution step
-    master_layer = None
-
     active_agents = team_data.get('active_agents', [])
+    
+    log_action("Starting hot-swappable step-by-step hybrid agent execution pipeline...")
+    
+    # CONTEXT MEMORY: Holds sequential text history across alternative backend platforms
+    running_context = ""
+
     for idx, item in enumerate(active_agents):
-        agent, current_layer = load_agent_and_tools(item, None)
-        if agent:
-            agents_list.append(agent)
-            master_layer = current_layer # Latches to final compiled step execution engine module
-
-            task_description = item.get('task_description')
-            expected_output = item.get('expected_output')
-
-            is_explicit_match = (target_agent_name and item['name'].lower() == target_agent_name)
-            is_legacy_match = (not target_agent_name and terminal_instruction and idx == 0)
-
-            if is_explicit_match or is_legacy_match:
-                task_description = f"Execute user terminal instruction: {terminal_instruction}"
-                expected_output = "Provide complete terminal request output summary package."
-                log_text(f"🎯 Dynamic instruction override applied explicitly to: {item['name']}")
-
-            # Build the custom abstract Task class wrapper inside the respective local module layer
-            task_instance = current_layer.Task(
-                description=task_description,
-                expected_output=expected_output,
-                agent=agent
-            )
-            tasks_list.append(task_instance)
-
-    if not agents_list:
-        log_error("No agents could be loaded. Mission aborted."); return
-
-    # 3. Hybrid Crew Setup & Final Handoff Compilation
-    # The final master orchestration manager coordinates multi-framework string handoffs sequentially
-    crew = master_layer.Crew(
-        agents=agents_list,
-        tasks=tasks_list,
-        verbose=get_config_value("VERBOSE", True)
-    )
-
-    # 4. Hybrid Mission Kickoff with Retry Logic
-    log_action("Starting hybrid multi-framework mission kickoff...")
-    max_retries = int(get_config_value("MAX_RETRIES", 3))
-
-    for attempt in range(max_retries):
         update_heartbeat()
-        set_mission_timeout(int(get_config_value("MISSION_TIMEOUT_SECONDS", 1800)))
+        agent_name = item['name']
+        output_channel = item.get("output_channel", "log").lower().strip()
+        
+        # Instantiate agent fresh for this explicit task block step
+        agent, current_layer = load_agent_and_tools(item, None)
+        if not agent or not current_layer:
+            log_error(f"Skipping task step for {agent_name}: Initialization error.")
+            continue
+            
+        task_description = item.get('task_description')
+        expected_output = item.get('expected_output')
+        
+        is_explicit_match = (target_agent_name and agent_name.lower() == target_agent_name)
+        is_legacy_match = (not target_agent_name and terminal_instruction and idx == 0)
 
+        if is_explicit_match or is_legacy_match:
+            task_description = f"Execute user terminal instruction: {terminal_instruction}"
+            expected_output = "Provide complete terminal request output summary package."
+            log_text(f"🎯 Dynamic instruction override applied explicitly to: {agent_name}")
+
+        # Inject execution baseline context history directly into task definitions
+        if running_context:
+            task_description += f"\n\nHISTORICAL CONTEXT FROM PREVIOUS TASKS:\n{running_context}"
+
+        # Initialize the specific factory task block 
+        task_instance = current_layer.Task(
+            description=task_description,
+            expected_output=expected_output,
+            agent=agent
+        )
+        
+        # Compile an isolated task crew container to process this single standalone phase step
+        step_crew = current_layer.Crew(
+            agents=[agent],
+            tasks=[task_instance],
+            verbose=get_config_value("VERBOSE", True)
+        )
+        
+        log_action(f"🚀 Launching step {idx + 1}/{len(active_agents)}: [{agent_name}] running on [{item.get('framework', 'crewai')}]")
+        
+        set_mission_timeout(int(get_config_value("MISSION_TIMEOUT_SECONDS", 1800)))
         try:
-            result = crew.kickoff()
+            # Execute step pass and extract raw string response output
+            step_result = str(step_crew.kickoff())
             clear_mission_timeout()
-            log_action("Mission completed successfully.")
-            return result
-        except Exception as e:
-            clear_mission_timeout()
-            log_error(f"Attempt {attempt + 1} failed: {e}")
-            if attempt < max_retries - 1:
-                delay = int(get_config_value("RETRY_DELAY_SECONDS", 10))
-                log_warn(f"Retrying mission in {delay} seconds...")
-                time.sleep(delay)
+            
+            # Append output context logs seamlessly for subsequent agents in the workflow loop
+            running_context += f"\n\n--- Output from Agent: {agent_name} ---\n{step_result}"
+            
+            # --- HOT-SWAPPABLE OUTPUT ROUTING GATEWAY ---
+            if output_channel == "discord":
+                try:
+                    import plugins.discord_bot as discord_plugin
+                    log_text(f"📬 Diverting {agent_name} output string to Discord Bot Channel...")
+                    
+                    # Ensure name prepending protocol rules are honored cleanly on the text segment
+                    formatted_msg = step_result if step_result.startswith(f"{agent_name}:") else f"{agent_name}: {step_result}"
+                    
+                    success = discord_plugin.send_direct_message(formatted_msg)
+                    if success:
+                        log_text(f"✅ Directed message delivered cleanly to Discord API interface.")
+                    else:
+                        log_warn("⚠️ Discord routing failed: Token unconfigured or channel unreachable. Falling back to stdout.")
+                        print(f"\n[FALLBACK STDOUT] {formatted_msg}\n")
+                except Exception as plugin_err:
+                    log_error(f"Failed loading Discord module hook: {plugin_err}")
+                    print(f"\n[FALLBACK STDOUT] {step_result}\n")
             else:
-                log_error("Max retries reached. Container idling for debug.")
-                while True:
-                    update_heartbeat()
-                    time.sleep(60)
+                # Default behavior: Output response string transparently to console logs
+                log_text(f"📋 Logging response for {agent_name} to internal stdout:")
+                print(f"\n--- {agent_name} Final Response ---\n{step_result}\n---------------------------\n")
+                
+        except Exception as step_error:
+            clear_mission_timeout()
+            log_error(f"❌ Critical failure on step executing agent {agent_name}: {step_error}")
+            
+            # Break workflow or retry depending on fault-tolerance config boundaries
+            if int(get_config_value("MAX_RETRIES", 3)) <= 1:
+                log_error("Max retries exhausted on step execution. Halting mission loop.")
+                while True: update_heartbeat(); time.sleep(60)
+
+    log_action("All steps inside the hybrid multi-framework pipeline completed successfully.")
+    return running_context
 
 if __name__ == "__main__":
     run_mission()
-

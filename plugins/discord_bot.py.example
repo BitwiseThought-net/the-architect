@@ -1,7 +1,5 @@
 import requests
-import os
-from ai_layer.orchestrator import tool
-from lib.utils import get_config_value
+from crewai.tools import tool
 
 # --- PLUGIN METADATA & INSTRUCTIONS ---
 INFO = {
@@ -22,34 +20,52 @@ INFO = {
 }
 
 # --- PLUGIN SETTINGS ---
-# Fallback values if not provided in config.json
+# Update these values on your host. main.py reloads this file on every retry/run.
 SETTINGS = {
     "bot_token": "YOUR_DISCORD_BOT_TOKEN_HERE",
     "guild_id": "YOUR_SERVER_ID_HERE",
     "target_channel_id": "YOUR_CHANNEL_ID_HERE",
-    "response_prefix_enabled": True
+    "response_prefix_enabled": True # Forces "agent_name: message" format
 }
 
-# --- PLUGIN LOGIC (The Internal Tool) ---
+# --- UNIFIED DIRECT ROUTING UTILITY ---
+def send_direct_message(message: str) -> bool:
+    """
+    Sends a raw string payload directly to the Discord channel using the Bot Token.
+    Bypasses agent tool calling frameworks to allow main.py to route responses live.
+    """
+    token = SETTINGS.get("bot_token")
+    channel_id = SETTINGS.get("target_channel_id")
+    
+    if not token or "YOUR_DISCORD_BOT_TOKEN" in token or not channel_id or "YOUR_CHANNEL_ID" in channel_id:
+        return False
+
+    url = f"discord.com{channel_id}/messages"
+    headers = {
+        "Authorization": f"Bot {token}",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json={"content": message}, timeout=10)
+        return response.status_code in [200, 201]
+    except Exception:
+        return False
+
+# --- PLUGIN LOGIC (The Internal Agent Tool) ---
 @tool("discord_interaction")
 def discord_interaction(message: str):
     """
     Sends agent responses directly to the configured Discord channel using the Bot Token.
-    Checks config.json first, then local SETTINGS.
+    This tool bypasses webhooks to use the official Discord API.
     """
-    # Priority 1: config.json | Priority 2: Local SETTINGS
-    token = get_config_value("bot_token") or SETTINGS.get("bot_token")
-    channel_id = get_config_value("target_channel_id") or SETTINGS.get("target_channel_id")
-
+    token = SETTINGS.get("bot_token")
+    channel_id = SETTINGS.get("target_channel_id")
+    
     if not token or "YOUR_DISCORD_BOT_TOKEN" in token:
-        return "❌ Plugin Error: Discord Bot Token is not configured."
-    if not channel_id or "YOUR_CHANNEL_ID" in channel_id:
-        return "❌ Plugin Error: target_channel_id is not configured."
-
-    # Official Discord API endpoint for creating messages
-    url = f"https://discord.com{channel_id}/messages"
-
-    # Bot Authorization Header
+        return "❌ Plugin Error: Discord Bot Token is not configured in discord_bot.py."
+    
+    url = f"discord.com{channel_id}/messages"
     headers = {
         "Authorization": f"Bot {token}",
         "Content-Type": "application/json"
@@ -71,7 +87,7 @@ def register():
     """Provides the tool and identity rules to the main service loader."""
     if not INFO.get("enabled"):
         return None
-
+        
     return {
         "tools": [discord_interaction],
         "enabled_for": INFO.get("enabled_for", ["*"]),
