@@ -28,7 +28,7 @@ pipeline {
 
                         sh "[ -f '${TEAM_JSON}' ] && cp '${TEAM_JSON}' team.json"
                         sh "[ -f '${ENV_SECRET}' ] && cp '${ENV_SECRET}' .env"
-                        sh "[ -f '${DISCORD_BOT_PY}' ] && cp '${DISCORD_BOT_PY}' plugins/discord_bot.py"
+                        sh "cp '${DISCORD_BOT_PY}' plugins/discord_bot.py"
                         sh "sed -i 's/\\r\$//' .env"
 
                         sh '''
