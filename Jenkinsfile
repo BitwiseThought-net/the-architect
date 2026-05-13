@@ -17,7 +17,8 @@ pipeline {
             steps {
                 withCredentials([
                     file(credentialsId: "${env.REPO_NAME}-env", variable: 'ENV_SECRET'),
-                    file(credentialsId: "${env.REPO_NAME}-team-json", variable: 'TEAM_JSON')
+                    file(credentialsId: "${env.REPO_NAME}-team-json", variable: 'TEAM_JSON'),
+                    file(credentialsId: "${env.REPO_NAME}-plugins-discord-bot-py", variable: 'DISCORD_BOT_PY')
                 ]) {
                     script {
                         // --- PREPARE PLUGINS DIRECTORY ---
@@ -27,6 +28,7 @@ pipeline {
 
                         sh "[ -f '${TEAM_JSON}' ] && cp '${TEAM_JSON}' team.json"
                         sh "[ -f '${ENV_SECRET}' ] && cp '${ENV_SECRET}' .env"
+                        sh "[ -f '${DISCORD_BOT_PY}' ] && cp '${DISCORD_BOT_PY}' .env"
                         sh "sed -i 's/\\r\$//' .env"
 
                         sh '''

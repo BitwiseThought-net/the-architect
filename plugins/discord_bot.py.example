@@ -36,7 +36,7 @@ def send_direct_message(message: str) -> bool:
     """
     token = SETTINGS.get("bot_token")
     channel_id = SETTINGS.get("target_channel_id")
-    
+
     if not token or "YOUR_DISCORD_BOT_TOKEN" in token or not channel_id or "YOUR_CHANNEL_ID" in channel_id:
         return False
 
@@ -45,7 +45,7 @@ def send_direct_message(message: str) -> bool:
         "Authorization": f"Bot {token}",
         "Content-Type": "application/json"
     }
-    
+
     try:
         response = requests.post(url, headers=headers, json={"content": message}, timeout=10)
         return response.status_code in [200, 201]
@@ -61,10 +61,10 @@ def discord_interaction(message: str):
     """
     token = SETTINGS.get("bot_token")
     channel_id = SETTINGS.get("target_channel_id")
-    
+
     if not token or "YOUR_DISCORD_BOT_TOKEN" in token:
         return "❌ Plugin Error: Discord Bot Token is not configured in discord_bot.py."
-    
+
     url = f"discord.com{channel_id}/messages"
     headers = {
         "Authorization": f"Bot {token}",
@@ -87,7 +87,7 @@ def register():
     """Provides the tool and identity rules to the main service loader."""
     if not INFO.get("enabled"):
         return None
-        
+
     return {
         "tools": [discord_interaction],
         "enabled_for": INFO.get("enabled_for", ["*"]),
