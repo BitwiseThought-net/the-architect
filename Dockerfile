@@ -1,36 +1,45 @@
+# Use a stable, official Python runtime baseline matching your application stack
 FROM python:3.11-slim
 
-ENV PYTHONPATH="/app"
+# Enforce clean terminal telemetry streams inside container environments
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libmagic-dev \
-    gcc \
-    dos2unix \
-    libgl1 \
-    libglib2.0-0 \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN ln -s /usr/local/bin/python3 /usr/bin/python3
-
+# Establish the secure system isolation root
 WORKDIR /app
 
+# Install native system binary compilation utilities required for heavy python extensions
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Stage dependency manifestations into the filesystem cache layer
 COPY requirements.txt .
-# Upgrade core tools and explicitly handle OpenTelemetry + Pydantic dependencies cleanly
+
+# --- CRITICAL RESOLUTION PHASE ---
+# 1. Upgrade baseline packaging ecosystem binaries
+# 2. Pre-install the pinned telemetry/typing baseline to break version loops 
+# 3. Compile the comprehensive multi-framework requirements sheet using the legacy architecture
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir "opentelemetry-api==1.28.0" "opentelemetry-sdk==1.28.0" "pydantic==2.10.6" --break-system-packages && \
+    pip install --no-cache-dir \
+        "pydantic==2.10.6" \
+        "opentelemetry-api==1.25.0" \
+        "opentelemetry-sdk==1.25.0" \
+        "opentelemetry-semantic-conventions==0.46b0" \
+        --break-system-packages && \
     pip install --no-cache-dir -r requirements.txt --use-deprecated=legacy-resolver --break-system-packages
 
+# Pre-provision the required persistent system directories 
+# This prevents Docker volume mounting racing state permission blocks during Jenkins runs
+RUN mkdir -p /app/output /app/knowledge /app/plugins /app/.crewai
 
+# Copy the complete functional orchestration logic layer into the image context
 COPY . .
 
-# Sanitize line endings for all Python files
-RUN find . -type f -name "*.py" -print0 | xargs -0 dos2unix && \
-    apt-get --purge remove -y dos2unix
+# Grant execution rights to python entrypoints inside the target runtime profile
+RUN chmod +x main.py
 
-# Create necessary persistent and safe directories
-RUN mkdir -p /app/output /app/knowledge /app/.crewai
-
+# Execute the core workflow engine bootstrapper
 CMD ["python", "main.py"]
-
