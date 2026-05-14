@@ -19,7 +19,7 @@ from lib.utils import (
 def load_agent_and_tools(agent_config, llm):
     """
     Dynamically boot-straps an individual agent using its specifically defined
-    framework engine while compiling its custom tool and plugin arrays from the io/ hub.
+    framework engine while compiling its custom tool and plugin arrays from the ai_io/ hub.
     Bails out cleanly if the specified framework file is missing or unimplemented.
     """
     agent_name = agent_config['name']
@@ -49,12 +49,14 @@ def load_agent_and_tools(agent_config, llm):
         except Exception as e:
             log_warn(f"Failed to load tool {t_name}: {e}")
 
-    io_dir = os.path.join(os.path.dirname(__file__), "io")
-    if os.path.exists(io_dir):
+    # FIXED: Re-mapped filesystem check properties to scan the "ai_io" package folder context
+    ai_io_dir = os.path.join(os.path.dirname(__file__), "ai_io")
+    if os.path.exists(ai_io_dir):
         try:
-            import io as io_package
-            if hasattr(io_package, "__path__"):
-                for loader, module_name, is_pkg in pkgutil.iter_modules(io_package.__path__):
+            # Dynamically import the local package structure cleanly bypassing native libraries
+            ai_io_package = importlib.import_module("ai_io")
+            if hasattr(ai_io_package, "__path__"):
+                for loader, module_name, is_pkg in pkgutil.iter_modules(ai_io_package.__path__):
                     if module_name == "__init__": continue
                     try:
                         module = importlib.import_module(f"ai_io.{module_name}")
@@ -70,8 +72,8 @@ def load_agent_and_tools(agent_config, llm):
                                         agent_config['backstory'] += f"\n\nIMPORTANT: Start every response with '{agent_name}: '."
                     except Exception as e:
                         pass
-        except ImportError:
-            pass
+        except Exception as e:
+            log_warn(f"Failed parsing registration hooks inside ai_io module bundle: {e}")
 
     try:
         agent_path = os.path.join("agents", f"{agent_name}.py")
@@ -304,14 +306,12 @@ def run_mission():
                         importlib.reload(io_module)
                         
                         if hasattr(io_module, "broadcast_status"):
-                            # Execute status routing payload delivery
                             route_success = io_module.broadcast_status(formatted_msg)
                             log_text(f"📢 Channel execution result for '{route_token}': {route_success}")
                         else:
-                            log_error(f"❌ Interface Error: Module 'io/{route_token}.py' is missing the mandatory broadcast_status function.")
+                            log_error(f"❌ Interface Error: Module 'ai_io/{route_token}.py' is missing the mandatory broadcast_status function.")
                     except Exception as route_crash:
-                        # FIXED: Changed silent ignore block to explicit syntax diagnostics to trace import/formatting issues
-                        log_error(f"❌ Critical exception inside channel routing loop logic for 'io/{route_token}.py': {route_crash}")
+                        log_error(f"❌ Critical exception inside channel routing loop logic for 'ai_io/{route_token}.py': {route_crash}")
                         
                 global_task_counter += 1
                 
