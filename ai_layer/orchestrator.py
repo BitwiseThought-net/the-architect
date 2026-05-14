@@ -6,9 +6,8 @@ from lib.logger import log_action, log_error
 # Discover the active framework target purely via central utilities configuration handles
 FRAMEWORK = get_config_value("AI_FRAMEWORK", "crewai").lower()
 
-available_frameworks = ["crewai", "autogen", "langgraph", "smolagents"]
-if FRAMEWORK not in available_frameworks:
-    log_error(f"Framework '{FRAMEWORK}' not implemented. Falling back to crewai.")
+if not FRAMEWORK:
+    log_error(f"Framework '{FRAMEWORK}' not specified. Falling back to crewai.")
     FRAMEWORK = "crewai"
 
 try:
