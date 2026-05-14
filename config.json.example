@@ -11,9 +11,16 @@
   "RETRY_DELAY_SECONDS": 10,
   "MISSION_TIMEOUT_SECONDS": 1800,
   "TOOL_EXEC_TIMEOUT": 30,
-  "LITELLM_URL": "http://ai-litellm:4000/v1",
   "OLLAMA_URL": "http://ai-ollama:11434",
   "TEAM_CONFIG": "team.json",
   "SAFE_OUTPUT_DIR": "/app/output",
-  "VERBOSE": true
+  "VERBOSE": true,
+  "LITELLM_URL": "http://ai-litellm:4000/v1",
+  "DISCORD_BOT_SETTINGS": {
+    "bot_token": "",
+    "guild_id": "",
+    "target_channel_id": "",
+    "response_prefix_enabled": true
+  },
+  "ledger_template": "{ \"agent\": \"{agent_name}\", \"actions_logged\": \"{result}\" }"
 }

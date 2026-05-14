@@ -53,7 +53,7 @@ def load_agent_and_tools(agent_config, llm):
         except ImportError:
             log_warn(f"Tool {t_name} not found in tools folder.")
 
-    # REFACTORED: Dynamic module loader parsing components straight from the /io directory context
+    # Dynamic module loader parsing components straight from the /io directory context
     io_dir = os.path.join(os.path.dirname(__file__), "io")
     if os.path.exists(io_dir):
         try:
@@ -123,6 +123,73 @@ def wait_for_llm(url, model):
             raise TimeoutError(f"LiteLLM timeout for {model}")
         time.sleep(15)
 
+def persist_agent_knowledge(agent_name: str, framework: str, task_index: int, description: str, result: str, agent_template: str = None):
+    """
+    Serializes completed agent updates using a hierarchical lookup design pattern.
+    Supports both raw text string templates and structured JSON object templates natively.
+    """
+    knowledge_dir = get_config_value("KNOWLEDGE_DIR", "knowledge")
+    if not os.path.exists(knowledge_dir):
+        os.makedirs(knowledge_dir)
+        
+    timestamp = int(time.time())
+    
+    fallback_template = (
+        "--- PERMANENT AGENT KNOWLEDGE LEDGER ---\n"
+        "AGENT_NAME: {agent_name}\n"
+        "FRAMEWORK_CONTEXT: {framework}\n"
+        "COMPLETION_TIMESTAMP: {timestamp}\n"
+        "TASK_INDEX: {task_index}\n"
+        "ASSIGNED_MISSION_PROMPT: {description}\n"
+        "----------------------------------------\n"
+        "COMPLETED_ACTIONS_AND_KNOWLEDGE_OUTCOME:\n"
+        "{result}\n"
+        "--- END OF LEDGER ---\n"
+    )
+    
+    # RESOLUTION HIERARCHY CHAIN: Local Agent Override -> Global Config File -> Hardcoded Backup []
+    active_template = agent_template or get_config_value("ledger_template", fallback_template)
+    
+    try:
+        # TYPE CHECK HANDLER: If config value is parsed into a dictionary (JSON object) []
+        if isinstance(active_template, dict):
+            filename = f"knowledge_ledger_{agent_name}_task_{task_index}_{timestamp}.json"
+            
+            # Step-by-step token substitution inside dictionary items using a comprehension loop
+            structured_ledger = {}
+            for k, v in active_template.items():
+                templated_val = str(v).format(
+                    agent_name=agent_name,
+                    framework=framework,
+                    timestamp=timestamp,
+                    task_index=task_index,
+                    description=description,
+                    result=result
+                )
+                structured_ledger[k] = templated_val
+                
+            # Convert dictionary layout into structured JSON formatting string block
+            ledger_content = json.dumps(structured_ledger, indent=2)
+            
+        else:
+            # Standard Text Fallback path: Process as raw text template string []
+            filename = f"knowledge_ledger_{agent_name}_task_{task_index}_{timestamp}.txt"
+            ledger_content = active_template.format(
+                agent_name=agent_name,
+                framework=framework,
+                timestamp=timestamp,
+                task_index=task_index,
+                description=description,
+                result=result
+            )
+            
+        target_path = os.path.join(knowledge_dir, filename)
+        with open(target_path, "w", encoding="utf-8") as f:
+            f.write(ledger_content)
+        log_text(f"💾 Permanently persisted and logged new knowledge asset to: {target_path}")
+    except Exception as e:
+        log_error(f"Failed token substitution formatting or writing knowledge ledger to file: {e}")
+
 def run_mission():
     global llm_config
     update_heartbeat()
@@ -166,9 +233,7 @@ def run_mission():
     except Exception as e:
         log_error(f"Malformed team.json: {e}"); return
 
-    knowledge_sources = get_all_knowledge_sources()
     active_agents = team_data.get('active_agents', [])
-    
     log_action("Starting hot-swappable nested hybrid agent execution pipeline...")
     running_context = ""
     global_task_counter = 1
@@ -176,6 +241,7 @@ def run_mission():
     for idx, item in enumerate(active_agents):
         update_heartbeat()
         agent_name = item['name']
+        agent_framework = item.get('framework', 'crewai')
         
         output_channels = item.get("output", ["log"])
         if isinstance(output_channels, str):
@@ -185,6 +251,9 @@ def run_mission():
         if not task_entries:
             task_entries = [{"description": item.get("task_description", "Execute pipeline tasks"), "expected": item.get("expected_output", "Final response string")}]
         
+        # Extract optional template local override parameters from the current agent JSON block
+        agent_specific_template = item.get("ledger_template", None)
+
         agent, current_layer = load_agent_and_tools(item, None)
         if not agent or not current_layer:
             log_error(f"Skipping steps for {agent_name}: Initialization error.")
@@ -192,6 +261,7 @@ def run_mission():
 
         for sub_idx, task_entry in enumerate(task_entries):
             update_heartbeat()
+            current_knowledge_sources = get_all_knowledge_sources()
             
             task_description = task_entry.get('description', 'Execute mission assignments')
             expected_output = task_entry.get('expected', 'Provide comprehensive summary return payload')
@@ -207,6 +277,7 @@ def run_mission():
             if running_context:
                 task_description += f"\n\nHISTORICAL CONTEXT FROM PREVIOUS TASKS:\n{running_context}"
 
+            # Pass parameters explicitly to satisfy underlying framework Pydantic validation requirements
             task_instance = current_layer.Task(
                 description=task_description,
                 expected_output=expected_output,
@@ -216,33 +287,38 @@ def run_mission():
             step_crew = current_layer.Crew(
                 agents=[agent],
                 tasks=[task_instance],
-                verbose=get_config_value("VERBOSE", True)
+                verbose=get_config_value("VERBOSE", True),
+                knowledge_sources=current_knowledge_sources
             )
             
-            log_action(f"🚀 [Global Step #{global_task_counter}] Running {agent_name} Sub-Task {sub_idx + 1}/{len(task_entries)} on [{item.get('framework', 'crewai')}]")
+            log_action(f"🚀 [Global Step #{global_task_counter}] Running {agent_name} Sub-Task {sub_idx + 1}/{len(task_entries)} on [{agent_framework}]")
             
             set_mission_timeout(int(get_config_value("MISSION_TIMEOUT_SECONDS", 1800)))
             try:
                 step_result = str(step_crew.kickoff())
                 clear_mission_timeout()
                 
-                running_context += f"\n\n--- Output from Agent: {agent_name} (Task #{sub_idx + 1}) ---\n{step_result}"
+                # Forward the agent template layout tracker object down into the serializer execution loop
+                persist_agent_knowledge(
+                    agent_name=agent_name,
+                    framework=agent_framework,
+                    task_index=global_task_counter,
+                    description=task_description,
+                    result=step_result,
+                    agent_template=agent_specific_template
+                )
+                
                 formatted_msg = step_result if step_result.startswith(f"{agent_name}:") else f"{agent_name}: {step_result}"
                 
-                # REFACTORED: Completely dynamic route mapping execution logic loop
+                # Dynamic route mapping execution logic loop parsing items out of the /io package folder
                 for channel in output_channels:
                     route_token = str(channel).lower().strip()
-                    
                     try:
-                        # Dynamically import the script matching the channel token straight from the io/ package folder
                         io_module = importlib.import_module(f"io.{route_token}")
                         importlib.reload(io_module)
-                        
                         if hasattr(io_module, "broadcast_status"):
                             log_text(f"🔀 Routing status update through dynamic channel: io/{route_token}.py")
                             io_module.broadcast_status(formatted_msg)
-                        else:
-                            log_warn(f"⚠️ Channel 'io/{route_token}.py' loaded but lacks standard broadcast_status interface function contract.")
                     except ImportError:
                         log_error(f"❌ Aborted route: No matching channel processing script 'io/{route_token}.py' exists for token.")
                         
@@ -255,7 +331,7 @@ def run_mission():
                     while True: update_heartbeat(); time.sleep(60)
 
     log_action("All aggregated steps inside the nested hybrid multi-framework pipeline completed successfully.")
-    return running_context
+    return "Complete Swarm Operation Successful."
 
 if __name__ == "__main__":
     run_mission()

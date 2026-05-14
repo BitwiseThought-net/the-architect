@@ -18,6 +18,7 @@ pipeline {
                 withCredentials([
                     file(credentialsId: "${env.REPO_NAME}-env", variable: 'ENV_SECRET'),
                     file(credentialsId: "${env.REPO_NAME}-team-json", variable: 'TEAM_JSON'),
+                    file(credentialsId: "${env.REPO_NAME}-config-json", variable: 'CONFIG_JSON'),
                     file(credentialsId: "${env.REPO_NAME}-plugins-discord-bot-py", variable: 'DISCORD_BOT_PY')
                 ]) {
                     script {
@@ -27,6 +28,7 @@ pipeline {
                         sh "touch plugins/__init__.py"
 
                         sh "[ -f '${TEAM_JSON}' ] && cp '${TEAM_JSON}' team.json"
+                        sh "[ -f '${CONFIG_JSON}' ] && cp '${CONFIG_JSON}' config.json"
                         sh "[ -f '${ENV_SECRET}' ] && cp '${ENV_SECRET}' .env"
                         sh "pwd"
                         sh "mkdir -p plugins"
