@@ -1,0 +1,86 @@
+{
+  "mission_name": "End-to-End Secure Feature Development",
+  "active_agents": [
+    {
+      "name": "librarian",
+      "framework": "crewai",
+      "output": ["discord"],
+      "tasks": [
+        {
+          "description": "Scan the /knowledge directory and synchronize the ChromaDB index with any new files found.",
+          "expected": "A summary report of the total files indexed and a confirmation that the RAG database is up to date."
+        }
+      ]
+    },
+    {
+      "name": "researcher",
+      "framework": "crewai",
+      "tools": ["search_duckduckgo"],
+      "output": ["discord"],
+      "tasks": [
+        {
+          "description": "Research best practices for implementing a secure SQLite database connection in Python using 2024 standards.",
+          "expected": "A technical report detailing the required libraries, connection string patterns, and common pitfalls."
+        }
+      ]
+    },
+    {
+      "name": "architect",
+      "framework": "crewai",
+      "output": "discord",
+      "tasks": [
+        {
+          "description": "Based on the research, design a modular file structure and a class-based schema for the database handler.",
+          "expected": "A structural plan showing the file names, class definitions, and how components interact."
+        }
+      ]
+    },
+    {
+      "name": "auditor_safe",
+      "framework": "crewai",
+      "output": "discord",
+      "tasks": [
+        {
+          "description": "Review the proposed architecture for SQL injection risks and ensure the plan follows 'Zero Trust' principles.",
+          "expected": "A security clearance report or a list of mandatory hardening changes the coder must follow."
+        }
+      ]
+    },
+    {
+      "name": "coder",
+      "framework": "crewai",
+      "tools": ["file_write_safe"],
+      "output": "discord",
+      "tasks": [
+        {
+          "description": "Implement the database handler in 'db_manager.py' based on the architect's design and auditor's security rules.",
+          "expected": "A success message confirming 'db_manager.py' has been written to the /app/output directory."
+        }
+      ]
+    },
+    {
+      "name": "tester",
+      "framework": "crewai",
+      "output": "discord",
+      "tools": ["file_write_safe", "terminal_safe"],
+      "tasks": [
+        {
+          "description": "1. Write pytest unit tests for the generated code. 2. Execute the tests using the safe_terminal_exec tool. 3. Report if the tests passed or failed.",
+          "expected": "A test results report including the stdout from the pytest run."
+        }
+      ]
+    },
+    {
+      "name": "writer",
+      "framework": "crewai",
+      "output": "discord",
+      "tools": ["file_write_safe"],
+      "tasks": [
+        {
+          "description": "Update the project's README.md to include documentation for the new database module and instructions on running the tests.",
+          "expected": "A Markdown formatted documentation block saved as 'README_UPDATE.md'."
+        }
+      ]
+    }
+  ]
+}
