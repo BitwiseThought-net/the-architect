@@ -168,98 +168,101 @@ def run_mission():
     knowledge_sources = get_all_knowledge_sources()
     active_agents = team_data.get('active_agents', [])
     
-    log_action("Starting hot-swappable step-by-step hybrid agent execution pipeline...")
+    log_action("Starting hot-swappable nested hybrid agent execution pipeline...")
     running_context = ""
+    global_task_counter = 1
 
     for idx, item in enumerate(active_agents):
         update_heartbeat()
         agent_name = item['name']
         
-        # FIXED: Extract outputs as a structured list format; default to ["log"] if missing
         output_channels = item.get("output", ["log"])
         if isinstance(output_channels, str):
             output_channels = [output_channels]
+            
+        task_entries = item.get("tasks", [])
+        if not task_entries:
+            task_entries = [{"description": item.get("task_description", "Execute pipeline tasks"), "expected": item.get("expected_output", "Final response string")}]
         
         agent, current_layer = load_agent_and_tools(item, None)
         if not agent or not current_layer:
-            log_error(f"Skipping task step for {agent_name}: Initialization error.")
+            log_error(f"Skipping steps for {agent_name}: Initialization error.")
             continue
-            
-        task_description = item.get('task_description')
-        expected_output = item.get('expected_output')
-        
-        is_explicit_match = (target_agent_name and agent_name.lower() == target_agent_name)
-        is_legacy_match = (not target_agent_name and terminal_instruction and idx == 0)
 
-        if is_explicit_match or is_legacy_match:
-            task_description = f"Execute user terminal instruction: {terminal_instruction}"
-            expected_output = "Provide complete terminal request output summary package."
-            log_text(f"🎯 Dynamic instruction override applied explicitly to: {agent_name}")
+        for sub_idx, task_entry in enumerate(task_entries):
+            update_heartbeat()
+            
+            task_description = task_entry.get('description', 'Execute mission assignments')
+            expected_output = task_entry.get('expected', 'Provide comprehensive summary return payload')
+            
+            is_explicit_match = (target_agent_name and agent_name.lower() == target_agent_name and sub_idx == 0)
+            is_legacy_match = (not target_agent_name and terminal_instruction and idx == 0 and sub_idx == 0)
 
-        if running_context:
-            task_description += f"\n\nHISTORICAL CONTEXT FROM PREVIOUS TASKS:\n{running_context}"
+            if is_explicit_match or is_legacy_match:
+                task_description = f"Execute user terminal instruction: {terminal_instruction}"
+                expected_output = "Provide complete terminal request output summary package."
+                log_text(f"🎯 Dynamic instruction override applied explicitly to: {agent_name} (Task Step {sub_idx + 1})")
 
-        task_instance = current_layer.Task(
-            description=task_description,
-            expected_output=expected_output,
-            agent=agent
-        )
-        
-        step_crew = current_layer.Crew(
-            agents=[agent],
-            tasks=[task_instance],
-            verbose=get_config_value("VERBOSE", True)
-        )
-        
-        log_action(f"🚀 Launching step {idx + 1}/{len(active_agents)}: [{agent_name}] running on [{item.get('framework', 'crewai')}]")
-        
-        set_mission_timeout(int(get_config_value("MISSION_TIMEOUT_SECONDS", 1800)))
-        try:
-            step_result = str(step_crew.kickoff())
-            clear_mission_timeout()
+            if running_context:
+                task_description += f"\n\nHISTORICAL CONTEXT FROM PREVIOUS TASKS:\n{running_context}"
+
+            # FIXED: Explicitly pass parameters as formal named arguments to satisfy underlying framework Pydantic validation requirements
+            task_instance = current_layer.Task(
+                description=task_description,
+                expected_output=expected_output,
+                agent=agent
+            )
             
-            running_context += f"\n\n--- Output from Agent: {agent_name} ---\n{step_result}"
+            step_crew = current_layer.Crew(
+                agents=[agent],
+                tasks=[task_instance],
+                verbose=get_config_value("VERBOSE", True)
+            )
             
-            # Formatted prefix constraint string
-            formatted_msg = step_result if step_result.startswith(f"{agent_name}:") else f"{agent_name}: {step_result}"
+            log_action(f"🚀 [Global Step #{global_task_counter}] Running {agent_name} Sub-Task {sub_idx + 1}/{len(task_entries)} on [{item.get('framework', 'crewai')}]")
             
-            # FIXED: Loop through each configured channel destination to broadcast status text
-            for channel in output_channels:
-                channel_token = str(channel).lower().strip()
+            set_mission_timeout(int(get_config_value("MISSION_TIMEOUT_SECONDS", 1800)))
+            try:
+                step_result = str(step_crew.kickoff())
+                clear_mission_timeout()
                 
-                if channel_token == "discord":
-                    try:
-                        import plugins.discord_bot as discord_plugin
-                        log_text(f"📬 Broadcasting {agent_name} output to Discord Bot Channel...")
-                        success = discord_plugin.send_direct_message(formatted_msg)
-                        if not success:
-                            log_warn(f"⚠️ Discord delivery failed for {agent_name}; check token configurations.")
-                    except Exception as err:
-                        log_error(f"Failed loading Discord module hook: {err}")
-                        
-                elif channel_token == "webhook":
-                    try:
-                        import plugins.webhook_notifications as webhook_plugin
-                        log_text(f"📢 Broadcasting {agent_name} output to Webhook Notification Channel...")
-                        # Map the direct call sequence signature to the underlying tool logic execution pass
-                        webhook_res = webhook_plugin.send_notification._func(formatted_msg)
-                        log_text(f"Response from Webhook node: {webhook_res}")
-                    except Exception as err:
-                        log_error(f"Failed executing Webhook notification hub: {err}")
-                        
-                elif channel_token == "log":
-                    # Output response string transparently to console logs
-                    log_text(f"📋 Logging response for {agent_name} to internal stdout:")
-                    print(f"\n--- {agent_name} Final Response ---\n{step_result}\n---------------------------\n")
+                running_context += f"\n\n--- Output from Agent: {agent_name} (Task #{sub_idx + 1}) ---\n{step_result}"
+                formatted_msg = step_result if step_result.startswith(f"{agent_name}:") else f"{agent_name}: {step_result}"
+                
+                for channel in output_channels:
+                    channel_token = str(channel).lower().strip()
                     
-        except Exception as e:
-            clear_mission_timeout()
-            log_error(f"❌ Critical failure on step executing agent {agent_name}: {e}")
-            if int(get_config_value("MAX_RETRIES", 3)) <= 1:
-                while True: update_heartbeat(); time.sleep(60)
+                    if channel_token == "discord":
+                        try:
+                            import plugins.discord_bot as discord_plugin
+                            log_text(f"📬 Broadcasting {agent_name} updates to Discord Channel...")
+                            discord_plugin.send_direct_message(formatted_msg)
+                        except Exception as err:
+                            log_error(f"Failed loading Discord module hook: {err}")
+                            
+                    elif channel_token == "webhook":
+                        try:
+                            import plugins.webhook_notifications as webhook_plugin
+                            log_text(f"📢 Broadcasting {agent_name} updates to Webhook Notifications...")
+                            webhook_plugin.send_notification._func(formatted_msg)
+                        except Exception as err:
+                            log_error(f"Failed executing Webhook notification hub: {err}")
+                            
+                    elif channel_token == "log":
+                        log_text(f"📋 Logging response for {agent_name} (Task #{sub_idx + 1}) to internal stdout:")
+                        print(f"\n--- {agent_name} Task #{sub_idx + 1} Final Response ---\n{step_result}\n---------------------------\n")
+                        
+                global_task_counter += 1
+                
+            except Exception as e:
+                clear_mission_timeout()
+                log_error(f"❌ Critical failure execution phase on sub-task {sub_idx + 1} for agent {agent_name}: {e}")
+                if int(get_config_value("MAX_RETRIES", 3)) <= 1:
+                    while True: update_heartbeat(); time.sleep(60)
 
-    log_action("All steps inside the hybrid multi-framework pipeline completed successfully.")
+    log_action("All aggregated steps inside the nested hybrid multi-framework pipeline completed successfully.")
     return running_context
 
 if __name__ == "__main__":
     run_mission()
+
