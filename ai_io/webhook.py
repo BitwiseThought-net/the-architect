@@ -24,7 +24,7 @@ SETTINGS = {
     "RESPONSE_PREFIX_ENABLED": True
 }
 
-if not DISCORD_BOT_SETTINGS:
+if 'DISCORD_BOT_SETTINGS' not in locals() and 'DISCORD_BOT_SETTINGS' not in globals():
     DISCORD_BOT_SETTINGS = get_config_value("DISCORD_BOT_SETTINGS", SETTINGS)
 
 def _send_msg(message: str) -> bool:
