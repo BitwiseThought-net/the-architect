@@ -1,5 +1,6 @@
 import requests
 from ai_layer.orchestrator import tool
+from lib.utils import get_config_value
 
 # --- PLUGIN METADATA ---
 INFO = {
@@ -22,6 +23,9 @@ SETTINGS = {
     "CHANNEL_ID": "",
     "RESPONSE_PREFIX_ENABLED": True
 }
+
+if not DISCORD_BOT_SETTINGS:
+    DISCORD_BOT_SETTINGS = get_config_value("DISCORD_BOT_SETTINGS", SETTINGS)
 
 def _send_msg(message: str) -> bool:
     BOT_TOKEN = SETTINGS.get("BOT_TOKEN")
