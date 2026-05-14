@@ -32,9 +32,9 @@ def _send_msg(message: str) -> bool:
     Priority 1: Check local SETTINGS dictionary context first.
     Priority 2: Fall back dynamically to centralized get_config_value matrix lookups.
     """
-    print(f"A: bot_token:'{bot_token}', server_id:'{server_id}', channel_id:'{channel_id}'.")
     # 1. Resolve Bot Token
     bot_token = SETTINGS.get("BOT_TOKEN")
+    print(f"A: bot_token:{bot_token}.")
     if not bot_token:
         bot_token = get_config_value("BOT_TOKEN")
     if not bot_token:
@@ -42,6 +42,7 @@ def _send_msg(message: str) -> bool:
 
     # 2. Resolve Server ID (Guild ID)
     server_id = SETTINGS.get("SERVER_ID")
+    print(f"B: bottoken:{bot_token}, server_id:{server_id}")
     if not server_id:
         server_id = get_config_value("SERVER_ID")
     if not server_id:
@@ -49,15 +50,16 @@ def _send_msg(message: str) -> bool:
 
     # 3. Resolve Channel ID
     channel_id = SETTINGS.get("CHANNEL_ID")
+    print(f"C: bot_token:{bot_token}, server_id:{server_id}, channel_id:{channel_id}.")
     if not channel_id:
         channel_id = get_config_value("CHANNEL_ID")
     if not channel_id:
         return False
 
-    print(f"B: bot_token:'{bot_token}', server_id:'{server_id}', channel_id:'{channel_id}'.")
+    print(f"D: bot_token:{bot_token}, server_id:{server_id}, channel_id:{channel_id}.")
     # VERIFIED CORRECT REST API ENDPOINT: Absolute scheme, explicit version, and proper slashes
     url = f"https://discord.com/api/v10/channels/{channel_id}/messages"
-    print(f"url:['{url}']")
+    print(f"url:[{url}]")
     headers = {
         "Authorization": f"Bot {bot_token}",
         "Content-Type": "application/json"
