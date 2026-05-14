@@ -45,7 +45,7 @@ def _send_msg(message: str) -> bool:
 
     RESPONSE_PREFIX_ENABLED = SETTINGS.get("RESPONSE_PREFIX_ENABLED")
     if not RESPONSE_PREFIX_ENABLED:
-        webhook_url = True
+        RESPONSE_PREFIX_ENABLED = True
 
     if not BOT_TOKEN:
         return False
