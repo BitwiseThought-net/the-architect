@@ -1,6 +1,5 @@
 import requests
 from ai_layer.orchestrator import tool
-from lib.logger import log_action, log_text, log_warn, log_error
 from lib.utils import get_config_value
 
 # --- PLUGIN METADATA ---
@@ -33,7 +32,7 @@ def _send_msg(message: str) -> bool:
     Priority 1: Check local SETTINGS dictionary context first.
     Priority 2: Fall back dynamically to centralized get_config_value matrix lookups.
     """
-    log_text(f"A: bot_token:'{bot_token}', server_id:'{server_id}', channel_id:'{channel_id}'.")
+    print(f"A: bot_token:'{bot_token}', server_id:'{server_id}', channel_id:'{channel_id}'.")
     # 1. Resolve Bot Token
     bot_token = SETTINGS.get("BOT_TOKEN")
     if not bot_token:
@@ -55,10 +54,10 @@ def _send_msg(message: str) -> bool:
     if not channel_id:
         return False
 
-    log_text(f"A: bot_token:'{bot_token}', server_id:'{server_id}', channel_id:'{channel_id}'.")
+    print(f"B: bot_token:'{bot_token}', server_id:'{server_id}', channel_id:'{channel_id}'.")
     # VERIFIED CORRECT REST API ENDPOINT: Absolute scheme, explicit version, and proper slashes
     url = f"https://discord.com/api/v10/channels/{channel_id}/messages"
-    log_text(f"url:['{url}']")
+    print(f"url:['{url}']")
     headers = {
         "Authorization": f"Bot {bot_token}",
         "Content-Type": "application/json"
