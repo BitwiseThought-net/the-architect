@@ -50,10 +50,9 @@ def load_agent_and_tools(agent_config, llm):
         try:
             tool_module = importlib.import_module(f"tools.{t_name}")
             all_tools.extend(tool_module.get_tools())
-        except ImportError:
-            log_warn(f"Tool {t_name} not found in tools folder.")
+        except Exception as e:
+            log_warn(f"Failed to load tool {t_name}: {e}")
 
-    # Dynamic module loader parsing components straight from the /io directory context
     io_dir = os.path.join(os.path.dirname(__file__), "io")
     if os.path.exists(io_dir):
         try:
@@ -124,10 +123,7 @@ def wait_for_llm(url, model):
         time.sleep(15)
 
 def persist_agent_knowledge(agent_name: str, framework: str, task_index: int, description: str, result: str, agent_template: str = None):
-    """
-    Serializes completed agent updates using a hierarchical lookup design pattern.
-    Supports both raw text string templates and structured JSON object templates natively.
-    """
+    """Serializes completed agent updates using a hierarchical lookup design pattern."""
     knowledge_dir = get_config_value("KNOWLEDGE_DIR", "knowledge")
     if not os.path.exists(knowledge_dir):
         os.makedirs(knowledge_dir)
@@ -147,15 +143,11 @@ def persist_agent_knowledge(agent_name: str, framework: str, task_index: int, de
         "--- END OF LEDGER ---\n"
     )
     
-    # RESOLUTION HIERARCHY CHAIN: Local Agent Override -> Global Config File -> Hardcoded Backup []
     active_template = agent_template or get_config_value("ledger_template", fallback_template)
     
     try:
-        # TYPE CHECK HANDLER: If config value is parsed into a dictionary (JSON object) []
         if isinstance(active_template, dict):
             filename = f"knowledge_ledger_{agent_name}_task_{task_index}_{timestamp}.json"
-            
-            # Step-by-step token substitution inside dictionary items using a comprehension loop
             structured_ledger = {}
             for k, v in active_template.items():
                 templated_val = str(v).format(
@@ -167,12 +159,8 @@ def persist_agent_knowledge(agent_name: str, framework: str, task_index: int, de
                     result=result
                 )
                 structured_ledger[k] = templated_val
-                
-            # Convert dictionary layout into structured JSON formatting string block
             ledger_content = json.dumps(structured_ledger, indent=2)
-            
         else:
-            # Standard Text Fallback path: Process as raw text template string []
             filename = f"knowledge_ledger_{agent_name}_task_{task_index}_{timestamp}.txt"
             ledger_content = active_template.format(
                 agent_name=agent_name,
@@ -198,12 +186,12 @@ def run_mission():
     terminal_instruction = None
 
     if len(sys.argv) > 1:
-        if sys.argv == "--agent" and len(sys.argv) > 3:
-            target_agent_name = sys.argv.lower().strip()
-            terminal_instruction = sys.argv
+        if sys.argv[1] == "--agent" and len(sys.argv) > 3:
+            target_agent_name = sys.argv[2].lower().strip()
+            terminal_instruction = sys.argv[3]
             log_action(f"📥 Target command routing initialized: Agent='{target_agent_name}'")
         else:
-            terminal_instruction = sys.argv
+            terminal_instruction = sys.argv[1]
             log_action(f"📥 Global terminal instruction received (routing to initial agent): '{terminal_instruction}'")
 
     model_name = get_config_value("MODEL_NAME", "qwen3.6:latest")
@@ -251,7 +239,6 @@ def run_mission():
         if not task_entries:
             task_entries = [{"description": item.get("task_description", "Execute pipeline tasks"), "expected": item.get("expected_output", "Final response string")}]
         
-        # Extract optional template local override parameters from the current agent JSON block
         agent_specific_template = item.get("ledger_template", None)
 
         agent, current_layer = load_agent_and_tools(item, None)
@@ -261,7 +248,13 @@ def run_mission():
 
         for sub_idx, task_entry in enumerate(task_entries):
             update_heartbeat()
-            current_knowledge_sources = get_all_knowledge_sources()
+            
+            # FIXED: Only pass active knowledge models if the agent is explicitly the 'librarian'
+            # This shields standard research and coding agents from empty RAG context loop timeouts
+            if agent_name.lower() == "librarian":
+                current_knowledge_sources = get_all_knowledge_sources()
+            else:
+                current_knowledge_sources = []
             
             task_description = task_entry.get('description', 'Execute mission assignments')
             expected_output = task_entry.get('expected', 'Provide comprehensive summary return payload')
@@ -274,10 +267,6 @@ def run_mission():
                 expected_output = "Provide complete terminal request output summary package."
                 log_text(f"🎯 Dynamic instruction override applied explicitly to: {agent_name} (Task Step {sub_idx + 1})")
 
-            if running_context:
-                task_description += f"\n\nHISTORICAL CONTEXT FROM PREVIOUS TASKS:\n{running_context}"
-
-            # Pass parameters explicitly to satisfy underlying framework Pydantic validation requirements
             task_instance = current_layer.Task(
                 description=task_description,
                 expected_output=expected_output,
@@ -298,7 +287,6 @@ def run_mission():
                 step_result = str(step_crew.kickoff())
                 clear_mission_timeout()
                 
-                # Forward the agent template layout tracker object down into the serializer execution loop
                 persist_agent_knowledge(
                     agent_name=agent_name,
                     framework=agent_framework,
@@ -310,7 +298,6 @@ def run_mission():
                 
                 formatted_msg = step_result if step_result.startswith(f"{agent_name}:") else f"{agent_name}: {step_result}"
                 
-                # Dynamic route mapping execution logic loop parsing items out of the /io package folder
                 for channel in output_channels:
                     route_token = str(channel).lower().strip()
                     try:
