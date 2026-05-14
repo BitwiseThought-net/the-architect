@@ -19,7 +19,7 @@ from lib.utils import (
 def load_agent_and_tools(agent_config, llm):
     """
     Dynamically boot-straps an individual agent using its specifically defined
-    framework engine while compiling its custom tool and plugin arrays.
+    framework engine while compiling its custom tool and plugin arrays from the io/ hub.
     """
     agent_name = agent_config['name']
     framework = agent_config.get("framework", get_config_value("AI_FRAMEWORK", "crewai")).lower()
@@ -53,15 +53,16 @@ def load_agent_and_tools(agent_config, llm):
         except ImportError:
             log_warn(f"Tool {t_name} not found in tools folder.")
 
-    plugins_dir = os.path.join(os.path.dirname(__file__), "plugins")
-    if os.path.exists(plugins_dir):
+    # REFACTORED: Dynamic module loader parsing components straight from the /io directory context
+    io_dir = os.path.join(os.path.dirname(__file__), "io")
+    if os.path.exists(io_dir):
         try:
-            import plugins
-            if hasattr(plugins, "__path__"):
-                for loader, module_name, is_pkg in pkgutil.iter_modules(plugins.__path__):
+            import io as io_package
+            if hasattr(io_package, "__path__"):
+                for loader, module_name, is_pkg in pkgutil.iter_modules(io_package.__path__):
                     if module_name == "__init__": continue
                     try:
-                        module = importlib.import_module(f"plugins.{module_name}")
+                        module = importlib.import_module(f"io.{module_name}")
                         importlib.reload(module)
                         
                         if hasattr(module, 'register'):
@@ -73,7 +74,7 @@ def load_agent_and_tools(agent_config, llm):
                                     if reg_data.get("identity_prefix"):
                                         agent_config['backstory'] += f"\n\nIMPORTANT: Start every response with '{agent_name}: '."
                     except Exception as e:
-                        log_warn(f"Skipping Python plugin {module_name}: {e}")
+                        pass
         except ImportError:
             pass
 
@@ -130,12 +131,12 @@ def run_mission():
     terminal_instruction = None
 
     if len(sys.argv) > 1:
-        if sys.argv[1] == "--agent" and len(sys.argv) > 3:
-            target_agent_name = sys.argv[2].lower().strip()
-            terminal_instruction = sys.argv[3]
+        if sys.argv == "--agent" and len(sys.argv) > 3:
+            target_agent_name = sys.argv.lower().strip()
+            terminal_instruction = sys.argv
             log_action(f"📥 Target command routing initialized: Agent='{target_agent_name}'")
         else:
-            terminal_instruction = sys.argv[1]
+            terminal_instruction = sys.argv
             log_action(f"📥 Global terminal instruction received (routing to initial agent): '{terminal_instruction}'")
 
     model_name = get_config_value("MODEL_NAME", "qwen3.6:latest")
@@ -206,7 +207,6 @@ def run_mission():
             if running_context:
                 task_description += f"\n\nHISTORICAL CONTEXT FROM PREVIOUS TASKS:\n{running_context}"
 
-            # FIXED: Explicitly pass parameters as formal named arguments to satisfy underlying framework Pydantic validation requirements
             task_instance = current_layer.Task(
                 description=task_description,
                 expected_output=expected_output,
@@ -229,28 +229,22 @@ def run_mission():
                 running_context += f"\n\n--- Output from Agent: {agent_name} (Task #{sub_idx + 1}) ---\n{step_result}"
                 formatted_msg = step_result if step_result.startswith(f"{agent_name}:") else f"{agent_name}: {step_result}"
                 
+                # REFACTORED: Completely dynamic route mapping execution logic loop
                 for channel in output_channels:
-                    channel_token = str(channel).lower().strip()
+                    route_token = str(channel).lower().strip()
                     
-                    if channel_token == "discord":
-                        try:
-                            import plugins.discord_bot as discord_plugin
-                            log_text(f"📬 Broadcasting {agent_name} updates to Discord Channel...")
-                            discord_plugin.send_direct_message(formatted_msg)
-                        except Exception as err:
-                            log_error(f"Failed loading Discord module hook: {err}")
-                            
-                    elif channel_token == "webhook":
-                        try:
-                            import plugins.webhook_notifications as webhook_plugin
-                            log_text(f"📢 Broadcasting {agent_name} updates to Webhook Notifications...")
-                            webhook_plugin.send_notification._func(formatted_msg)
-                        except Exception as err:
-                            log_error(f"Failed executing Webhook notification hub: {err}")
-                            
-                    elif channel_token == "log":
-                        log_text(f"📋 Logging response for {agent_name} (Task #{sub_idx + 1}) to internal stdout:")
-                        print(f"\n--- {agent_name} Task #{sub_idx + 1} Final Response ---\n{step_result}\n---------------------------\n")
+                    try:
+                        # Dynamically import the script matching the channel token straight from the io/ package folder
+                        io_module = importlib.import_module(f"io.{route_token}")
+                        importlib.reload(io_module)
+                        
+                        if hasattr(io_module, "broadcast_status"):
+                            log_text(f"🔀 Routing status update through dynamic channel: io/{route_token}.py")
+                            io_module.broadcast_status(formatted_msg)
+                        else:
+                            log_warn(f"⚠️ Channel 'io/{route_token}.py' loaded but lacks standard broadcast_status interface function contract.")
+                    except ImportError:
+                        log_error(f"❌ Aborted route: No matching channel processing script 'io/{route_token}.py' exists for token.")
                         
                 global_task_counter += 1
                 
