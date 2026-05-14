@@ -3,7 +3,7 @@ chromadb
 crewai==0.102.0
 crewai[docling]==0.102.0
 crewai[litellm]==0.102.0
-crewai-tools==0.83.0
+crewai-tools>=0.33.0,<=0.76.0
 duckduckgo-search
 langchain-core>=0.3.0
 langchain_openai
