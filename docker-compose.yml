@@ -11,7 +11,8 @@ services:
       - .:/app/config_mount:ro
       - ./plugins:/app/plugins:ro
       - ./output:/app/output
-      - ./knowledge:/app/knowledge
+#      - ./knowledge:/app/knowledge
+      - /media/knowledge:/app/knowledge
     working_dir: /app
     env_file:
       - .env

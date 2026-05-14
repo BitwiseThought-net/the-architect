@@ -23,8 +23,8 @@ pipeline {
                     file(credentialsId: "${env.REPO_NAME}-file-1", variable: 'FILE_1')
                 ]) {
                     script {
-                        // --- PREPARE PLUGINS DIRECTORY ---
-                        // Ensure plugins folder and __init__.py exist so Docker doesn't throw mount errors
+                        sh "mkdir -p /media/knowledge"
+
                         sh "mkdir -p plugins"
                         sh "touch plugins/__init__.py"
 
