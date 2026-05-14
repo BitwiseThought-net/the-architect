@@ -21,12 +21,8 @@ INFO = {
 
 # --- PLUGIN SETTINGS ---
 # Update these values on your host. main.py reloads this file on every retry/run.
-SETTINGS = {
-    "bot_token": "YOUR_DISCORD_BOT_TOKEN_HERE",
-    "guild_id": "YOUR_SERVER_ID_HERE",
-    "target_channel_id": "YOUR_CHANNEL_ID_HERE",
-    "response_prefix_enabled": True # Forces "agent_name: message" format
-}
+# "response_prefix_enabled": True = Forces "agent_name: message" format
+SETTINGS = get_config_value("DISCORD_BOT_SETTINGS")
 
 # --- UNIFIED DIRECT ROUTING UTILITY ---
 def send_direct_message(message: str) -> bool:
