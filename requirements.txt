@@ -9,7 +9,7 @@ odfpy
 ollama
 openpyxl
 pandas
-pydantic>=2.13.5
+pydantic>=2.14.1
 pypdf
 pyyaml
 requests
