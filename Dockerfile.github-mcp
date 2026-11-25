@@ -1,0 +1,16 @@
+# GitHub's official MCP server (a static Go binary) exposed to Open WebUI as an
+# OpenAPI tool server through mcpo (Open WebUI's own MCP-to-OpenAPI proxy).
+#
+# Both versions are build args so they can be pinned from .env
+# (GITHUB_MCP_VERSION / MCPO_VERSION). "latest" and "main" are floating tags;
+# pin to a release tag (or digest) once you have a combination that works.
+ARG GITHUB_MCP_VERSION=latest
+ARG MCPO_VERSION=main
+
+FROM ghcr.io/github/github-mcp-server:${GITHUB_MCP_VERSION} AS github-mcp
+
+FROM ghcr.io/open-webui/mcpo:${MCPO_VERSION}
+
+# The upstream image keeps the binary at /server/github-mcp-server. It is built
+# with CGO_ENABLED=0, so it runs fine inside mcpo's Python/Debian base image.
+COPY --from=github-mcp /server/github-mcp-server /usr/local/bin/github-mcp-server
