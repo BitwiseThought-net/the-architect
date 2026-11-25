@@ -179,12 +179,6 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
-#    healthcheck:
-#      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8000 && exec 3<&-"]
-#      interval: 10s
-#      timeout: 5s
-#      retries: 10
-#      start_period: 20s
 
   ollama:
     container_name: ai-ollama
