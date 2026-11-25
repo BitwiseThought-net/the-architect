@@ -94,8 +94,9 @@ see the [`docs/`](docs/README.md) folder, starting with
    cp team.json.example team.json
    cp .env.example .env
    ```
-   At minimum, set `ADMIN_PASSWORD` in `.env` - Docker Compose refuses to
-   start without it (it's used to create the Open WebUI admin account that
+   At minimum, set `ADMIN_PASSWORD`, `GITHUB_PERSONAL_ACCESS_TOKEN` and
+   `MCPO_API_KEY` in `.env` - Docker Compose refuses to start without them
+   (see [GitHub MCP Tools](docs/tools/github-mcp.md)) (it's used to create the Open WebUI admin account that
    the Tools get installed under). See [`.env` Reference](docs/configuration/env-file.md)
    for every other key.
 

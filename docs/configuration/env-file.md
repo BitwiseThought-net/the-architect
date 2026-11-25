@@ -46,6 +46,11 @@ currently wires it up:
 | `ADMIN_PASSWORD` | **required - no default.** Compose uses `${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}`, which makes `docker compose up` refuse to start at all if this is blank. | Password for the same admin account. | `docker-compose.yml` `tool-installer` service |
 | `ADMIN_NAME` | `"Admin"` (Compose fallback) | Display name for the same admin account, only used if the account doesn't already exist. | `docker-compose.yml` `tool-installer` service |
 | `OLLAMA_CONTEXT_LENGTH` | *(none set by default; passed through if set)* | Ollama's own context-window-size setting, read by the Ollama server image itself from its container environment (passed through via the `ollama` service's `env_file: - .env`, not referenced by `docker-compose.yml` directly). `.env.example` ships `65536`. | Ollama image directly (via `env_file` pass-through) |
+| `GITHUB_PERSONAL_ACCESS_TOKEN` | **required - no default** (Compose `:?` check) | GitHub token used by the `github-mcp` service. | `docker-compose.yml` `github-mcp` service |
+| `MCPO_API_KEY` | **required - no default** (Compose `:?` check) | Bearer key shared by Open WebUI and the `github-mcp` mcpo proxy. | `docker-compose.yml` `github-mcp` and `open-webui` services |
+| `GITHUB_TOOLSETS` | `repos,issues,pull_requests` | GitHub MCP toolsets to load. | `github-mcp` service |
+| `GITHUB_READ_ONLY` | `1` | `1` = read-only tools only. | `github-mcp` service |
+| `GITHUB_MCP_VERSION` / `MCPO_VERSION` | `latest` / `main` | Image tags used by `Dockerfile.github-mcp`. | `github-mcp` build args |
 
 ## Related pages
 

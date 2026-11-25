@@ -24,6 +24,7 @@ written; unmarked pages are still stubs with a `## TODO` list.
 ## Tools
 - [Agent Tools (`tools/` + `team.json`)](tools/agent-tools.md)
 - [Open WebUI Tools](tools/open-webui-tools.md)
+- ✅ [GitHub MCP Tools](tools/github-mcp.md)
 
 ## AI Layer / Framework Adapters
 - [Supported Frameworks](ai_layer/frameworks.md)

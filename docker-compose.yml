@@ -96,6 +96,10 @@ services:
       - ENABLE_RAG_WEB_SEARCH=true
       - RAG_WEB_SEARCH_ENGINE=searxng
       - SEARXNG_QUERY_URL=http://searxng:8080/search?q=<query>
+      # GitHub tools via the github-mcp service (mcpo, OpenAPI). NOTE: this is a
+      # PersistentConfig value, read only on first boot; after that the Admin UI
+      # (Settings > Admin > Integrations) owns it. See docs/tools/github-mcp.md.
+      - 'TOOL_SERVER_CONNECTIONS=[{"type":"openapi","url":"http://github-mcp:8000","path":"openapi.json","auth_type":"bearer","key":"${MCPO_API_KEY:?set MCPO_API_KEY in .env}","config":{"enable":true},"info":{"id":"github","name":"GitHub","description":"Official GitHub MCP server: read repos, issues, pull requests"}}]'
     labels:
       autoheal: "true"
     healthcheck:
@@ -104,6 +108,45 @@ services:
       timeout: 5s
       retries: 12
       start_period: 30s
+
+  github-mcp:
+    # GitHub's official MCP server (stdio) behind mcpo, so Open WebUI can call it
+    # as an OpenAPI tool server. Not published to the host: reachable only on the
+    # compose network at http://github-mcp:8000. See docs/tools/github-mcp.md.
+    container_name: ai-github-mcp
+    build:
+      context: .
+      dockerfile: Dockerfile.github-mcp
+      args:
+        GITHUB_MCP_VERSION: ${GITHUB_MCP_VERSION:-latest}
+        MCPO_VERSION: ${MCPO_VERSION:-main}
+    restart: unless-stopped
+    environment:
+      # mcpo copies its own environment into the stdio child, which is how the
+      # token reaches github-mcp-server. It never goes into Open WebUI.
+      - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN:?set GITHUB_PERSONAL_ACCESS_TOKEN in .env}
+      - GITHUB_TOOLSETS=${GITHUB_TOOLSETS:-repos,issues,pull_requests}
+      # Read-only unless you explicitly set GITHUB_READ_ONLY=0 in .env.
+      - GITHUB_READ_ONLY=${GITHUB_READ_ONLY:-1}
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --api-key
+      - ${MCPO_API_KEY:?set MCPO_API_KEY in .env}
+      - --strict-auth
+      - --
+      - /usr/local/bin/github-mcp-server
+      - stdio
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import socket; socket.create_connection(('localhost', 8000), 3).close()"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    labels:
+      autoheal: "true"
 
   litellm:
     container_name: ai-litellm
