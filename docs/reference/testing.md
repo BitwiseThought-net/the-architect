@@ -26,7 +26,7 @@
 - Document what each test module covers, one line each (read each file's
   top-level docstring/first few tests to summarize accurately rather than
   guessing from the filename alone): `test_lib_utils.py`,
-  `test_github_repo_tool.py`, `test_main_wait_for_llm.py`,
+  `test_main_wait_for_llm.py`,
   `test_main_persist_agent_knowledge.py`, `test_tools_legacy_wrappers.py`,
   `test_main_load_agent_and_tools.py`, `test_loaders.py`,
   `test_tools_file_write_safe.py`, `test_knowledge_manager.py`,

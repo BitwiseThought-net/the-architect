@@ -33,8 +33,8 @@
     `cwd=SAFE_OUTPUT_DIR` and a `TOOL_EXEC_TIMEOUT`-second timeout) and
     link to `docs/reference/security-sandbox.md`.
   - `tools/search_duckduckgo.py` → `ai_layer.orchestrator.DuckDuckGoSearchTool`.
-  - `tools/github_repo_tool.py` and `tools/web_scraper_tool.py` - note these
-    two are *dual-purpose*: they also implement the Open WebUI `Tools`
+  - `tools/web_scraper_tool.py` - note this one is *dual-purpose*: it also
+    implements the Open WebUI `Tools`
     class convention and get auto-installed into Open WebUI. Cover their
     `get_tools()`-style usage (if any) here, but put the full Valves/config
     breakdown in `docs/tools/open-webui-tools.md` and link to it rather

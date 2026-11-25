@@ -31,7 +31,7 @@ overrides, volumes, `depends_on`/health-check relationships, and the
   (`OPENAI_API_BASE_URL`/`OPENAI_API_KEY`) and its built-in
   `ENABLE_RAG_WEB_SEARCH`/`SEARXNG_QUERY_URL` web-search integration (note
   in the doc that this is Open WebUI's *native* search feature, separate
-  from the custom `web_scraper_tool.py`/`github_repo_tool.py` Tools - the
+  from the custom `web_scraper_tool.py` Tool - the
   compose file itself has a comment to this effect).
 - `litellm` - the OpenAI-compatible proxy in front of Ollama
   (`ghcr.io/berriai/litellm`); document that it's driven by

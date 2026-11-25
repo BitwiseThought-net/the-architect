@@ -11,25 +11,9 @@
   `description`/`version`), installed directly into the Open WebUI chat
   interface - not wired into `team.json` agents. Contrast briefly with
   `docs/tools/agent-tools.md` and link to it.
-- Document `tools/github_repo_tool.py` fully:
-  - What it does: given a public (or, with a token, private) GitHub repo
-    URL, fetches the repo's default branch (or a `/tree/<branch>` URL),
-    walks its file tree via the GitHub REST API, filters out binary/lockfile/
-    vendor noise (list the `SKIP_DIRS` and `SKIP_EXTS` sets), downloads raw
-    file contents up to configured limits, and returns a single text digest.
-  - Its `Valves` (config settings, exposed in the Open WebUI tool settings
-    UI): `GITHUB_TOKEN` (default `""`; raises the unauthenticated 60/hr
-    GitHub API rate limit to 5000/hr and enables private-repo access),
-    `MAX_FILES` (default `40`), `MAX_FILE_CHARS` (default `4000`),
-    `MAX_TOTAL_CHARS` (default `30000`). Document each one's exact effect on
-    the returned digest.
-  - Its one public method, `read_github_repository(repo_url)`, its
-    parameters, and its return format (repo header, filtered file tree,
-    then `--- FILE: path ---` sections), including how it truncates
-    individual files and stops early once `MAX_FILES`/`MAX_TOTAL_CHARS` is
-    hit.
-  - Note explicitly: it does **not** accept an uploaded zip file or local
-    path - only a `github.com/owner/repo[...]` URL string.
+- Note that GitHub access is no longer a custom Open WebUI Tool: the old
+  `github_repo_tool.py` was retired in favor of the `github-mcp` service. Link to
+  [GitHub MCP Tools](github-mcp.md).
 - Document `tools/web_scraper_tool.py` fully:
   - What it does: fetches a URL and returns cleaned plain-text content
     (script/style/markup stripped via BeautifulSoup).

@@ -152,8 +152,7 @@ stay consistent across files:
   1. **Agent tools** (`tools/*.py`): Python modules with a `get_tools()`
      function, loaded by `main.py` and attached to CrewAI/AutoGen/etc.
      agents per the `"tools"` array in `team.json`.
-  2. **Open WebUI Tools** (`tools/github_repo_tool.py`,
-     `tools/web_scraper_tool.py`): these follow the Open WebUI `Tools`
+  2. **Open WebUI Tools** (`tools/web_scraper_tool.py`): these follow the Open WebUI `Tools`
      class + `Valves` plugin convention and are installed into the Open
      WebUI chat UI itself by `scripts/install_tools.py` /
      the `tool-installer` Compose service - they are not wired into

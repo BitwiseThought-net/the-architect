@@ -3,9 +3,9 @@
 This page covers the `github-mcp` Compose service, which gives Open WebUI (and
 the model behind it) access to GitHub through GitHub's official MCP server. It
 runs the official `github-mcp-server` binary in stdio mode behind `mcpo`, Open
-WebUI's MCP-to-OpenAPI proxy, and is registered in Open WebUI automatically on
-first boot. It supplements, and can eventually replace, the hand-written
-`tools/github_repo_tool.py` described in [Open WebUI Tools](open-webui-tools.md).
+WebUI's MCP-to-OpenAPI proxy. It replaces the former hand-written GitHub
+repository reader tool, which has been retired. Setup needs a few manual steps
+in Open WebUI, described below.
 
 ## How it fits together
 
@@ -34,15 +34,27 @@ All keys go in `.env` (see [`.env` Reference](../configuration/env-file.md)).
 | `GITHUB_MCP_VERSION` | `latest` | Tag of `ghcr.io/github/github-mcp-server` copied into the image. |
 | `MCPO_VERSION` | `main` | Tag of `ghcr.io/open-webui/mcpo` used as the base image. |
 
-## Open WebUI registration
+## Open WebUI setup (three steps)
 
-The `open-webui` service receives a `TOOL_SERVER_CONNECTIONS` entry pointing at
-`http://github-mcp:8000` with the `MCPO_API_KEY` as bearer key. Open WebUI treats
-this as a persistent config value: it is read on the first boot of a fresh data
-volume only. If Open WebUI already has data, or you rotate `MCPO_API_KEY`,
-update the connection by hand under Settings > Admin > Integrations (type
-OpenAPI, URL `http://github-mcp:8000`, auth Bearer). Then enable the GitHub tool
-in a chat from the tools menu.
+The tool only reaches a chat after all three of these are done.
+
+1. **Register the server.** The `open-webui` service receives a
+   `TOOL_SERVER_CONNECTIONS` entry for `http://github-mcp:8000`, but Open WebUI
+   treats it as a persistent config value read only on the first boot of a fresh
+   data volume. On an existing install, add it by hand under Settings > Admin >
+   Integrations > External Tool Servers: type OpenAPI, URL `http://github-mcp:8000`,
+   auth **Bearer**, key = your `MCPO_API_KEY` (the raw value, no "Bearer " prefix).
+   If you rotate `MCPO_API_KEY`, update the connection the same way.
+2. **Attach it to the model.** Go to Admin Settings > Models, open the model
+   defaults or the specific model you chat with, and select the GitHub external
+   tool in its tools section. Save. Without this the tool never shows up in chats.
+3. **Enable it in the chat.** In a new chat, open the **+** menu and enable the
+   GitHub tool there. This is separate from the Workspace Tools list.
+
+Tips: set Function Calling to Native (Chat Controls > Advanced Params) if the
+model ignores tools, and switch off Code Interpreter for repository questions.
+A `403` on `/openapi.json` in `docker compose logs github-mcp` means the
+connection's auth is not Bearer with the exact key; a `200` means it is accepted.
 
 ## Token and write-access guidance
 

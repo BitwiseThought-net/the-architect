@@ -9,4 +9,10 @@
 - **Secrets only in .env** (git-ignored), required via Compose `:?`; the
   user's draft hardcoded the mcpo key in compose, which was replaced.
 - **Floating image tags by default, pinnable via .env** so the first build works.
-- **Old `tools/github_repo_tool.py` kept** for now; removal is a user decision.
+
+- **Stay on mcpo/OpenAPI (confirmed working).** The native-MCP/`http` alternative
+  was explored and discarded; it is only worth revisiting if mcpo causes trouble.
+- **Registration is a documented manual three-step** (connection, attach to model,
+  enable in chat); first-boot env registration is a bonus, not a guarantee.
+- **Old `tools/github_repo_tool.py` retired** (user decision); GitHub access is the
+  github-mcp service only.
