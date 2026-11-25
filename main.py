@@ -190,7 +190,7 @@ def run_mission():
             terminal_instruction = sys.argv
             log_action(f"📥 Global terminal instruction received (routing to initial agent): '{terminal_instruction}'")
 
-    model_name = get_config_value("MODEL_NAME", "qwen3.6:latest")
+    model_name = get_config_value("MODEL_NAME", "qwen3.8:latest")
     litellm_url = get_config_value("LITELLM_URL", "http://ai-litellm:4000/v1")
     project_id = get_config_value("PROJECT_NAME", "ai_architect").lower().replace("-", "_").replace(" ", "_")
     

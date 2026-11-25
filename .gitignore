@@ -21,7 +21,6 @@ plugins/*.json
 # Keep the folder structure but ignore content
 !plugins/
 
-
 # C extensions
 *.so
 
@@ -167,6 +166,7 @@ activemq-data/
 
 # Environments
 .env
+.env*
 .envrc
 .venv
 env/
@@ -239,3 +239,4 @@ __marimo__/
 
 ollama
 open-webui
+ai_open_webui_data/
