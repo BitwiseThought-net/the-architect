@@ -55,7 +55,30 @@ Integrations > External Tool Servers are NOT the Workspace Tools list.
 - Do not ask the user to re-run debug commands or repeat information; do not
   guess Open WebUI internals; do not make repo changes the user did not ask for.
 
+### Session 3 - automatic provisioning (built, UNTESTED against a live instance)
+- `scripts/install_tools.py` now also calls Open WebUI's API after installing
+  tools: GET/POST `/api/v1/configs/tool_servers` (upsert the connection with
+  info.id "github"), then GET `/api/v1/models/model?id=` and POST
+  `/api/v1/models/model/update` or `/api/v1/models/create` to add `server:github`
+  to `meta.toolIds` of each model in GITHUB_TOOL_MODELS (default MODEL_NAME).
+  Endpoints and payload shapes were checked against Open WebUI `main` source, which
+  may be newer than the user's image; failures only warn (see `docker compose logs
+  tool-installer`).
+- compose: tool-installer depends on github-mcp (healthy) and gets GITHUB_MCP_URL
+  and GITHUB_TOOL_MODELS; MCPO_API_KEY/MODEL_NAME come from .env via env_file.
+- tests/test_install_tools_github.py (fake Open WebUI) added; full suite 207 passed.
+- Remaining manual step: enable the tool per chat from the + menu.
+- Backup/migration advice given: copy webui.db (or the ai_open_webui_data volume);
+  keep WEBUI_SECRET_KEY and MCPO_API_KEY identical; set a real WEBUI_SECRET_KEY
+  (compose falls back to the literal "change-this-secret").
+
+- CI fix: tests/test_compose_github_mcp.py imports yaml; CI installs only
+  requirements-dev.txt, so pyyaml was added there (it was only in requirements.txt).
+
 ### Next steps
+0. User to run `docker compose up` (or `docker compose run --rm tool-installer`),
+   read `docker compose logs tool-installer`, and report whether registration and
+   attachment worked; fix payload mismatches if warnings appear.
 1. Pin GITHUB_MCP_VERSION and MCPO_VERSION now that a working pair exists.
 2. DONE (session 2): retired tools/github_repo_tool.py, tests/test_github_repo_tool.py
    and doc references. tools/ now holds the agent tools plus web_scraper_tool.py.

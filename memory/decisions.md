@@ -16,3 +16,6 @@
   enable in chat); first-boot env registration is a bonus, not a guarantee.
 - **Old `tools/github_repo_tool.py` retired** (user decision); GitHub access is the
   github-mcp service only.
+- **Provision via the tool-installer API calls** (not env-only): TOOL_SERVER_CONNECTIONS
+  is first-boot-only and cannot attach tools to models. Installer is idempotent, manages
+  only the connection with info.id "github", and never fails the run.

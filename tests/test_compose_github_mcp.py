@@ -35,3 +35,11 @@ def test_open_webui_registers_tool_server():
     conn = json.loads(raw)[0]
     assert conn["url"] == "http://github-mcp:8000"
     assert conn["auth_type"] == "bearer"
+
+
+def test_tool_installer_wired_for_github():
+    inst = COMPOSE["services"]["tool-installer"]
+    assert "github-mcp" in inst["depends_on"]
+    env = "\n".join(inst["environment"])
+    assert "GITHUB_MCP_URL=http://github-mcp:8000" in env
+    assert "GITHUB_TOOL_MODELS=" in env

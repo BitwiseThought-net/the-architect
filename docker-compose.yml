@@ -56,6 +56,8 @@ services:
     depends_on:
       open-webui:
         condition: service_healthy
+      github-mcp:
+        condition: service_healthy
     volumes:
       - ./tools:/tools:ro
       - ./scripts/install_tools.py:/install_tools.py:ro
@@ -67,6 +69,10 @@ services:
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
       - ADMIN_NAME=${ADMIN_NAME:-Admin}
+      # Registers the github-mcp tool server in Open WebUI and attaches it to
+      # these models (comma-separated ids). MCPO_API_KEY comes from .env.
+      - GITHUB_MCP_URL=http://github-mcp:8000
+      - GITHUB_TOOL_MODELS=${GITHUB_TOOL_MODELS:-${MODEL_NAME:-}}
     restart: "no"
 
   open-webui:
