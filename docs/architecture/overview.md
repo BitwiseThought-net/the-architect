@@ -68,8 +68,7 @@ to conflate them:
 1. **Agent tools** (`tools/*.py` with a `get_tools()` function) - attached to
    `team.json` agents via their `"tools"` array, and invoked by the LLM
    during a mission. See [Agent Tools](../tools/agent-tools.md).
-2. **Open WebUI Tools** (`tools/github_repo_tool.py`,
-   `tools/web_scraper_tool.py`) - Open WebUI plugin-convention modules
+2. **Open WebUI Tools** (`tools/web_scraper_tool.py`) - Open WebUI plugin-convention modules
    installed directly into the Open WebUI chat interface by the
    `tool-installer` service. They are available to a human chatting in Open
    WebUI, not to `team.json` agents. See

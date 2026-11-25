@@ -1,5 +1,5 @@
 """
-Installs (or updates) the web scraper and GitHub repo reader Tools into Open
+Installs (or updates) the web scraper Tool (and any other .py file in /tools) into Open
 WebUI over its REST API, so no manual copy/paste into the UI is needed.
 
 Reads every .py file in /tools, pulls a title/description out of its leading

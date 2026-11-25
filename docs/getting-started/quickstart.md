@@ -25,7 +25,7 @@
   directory for persisted agent knowledge ledgers (`main.py:persist_agent_knowledge`),
   and Discord if configured (link to `docs/ai_io/output-channels.md`).
 - Document opening Open WebUI (`http://localhost:${UI_PORT}`) and mention
-  that the GitHub Repository Reader and Web Page Scraper tools
-  (`tools/github_repo_tool.py`, `tools/web_scraper_tool.py`) are
+  that the Web Page Scraper tool (`tools/web_scraper_tool.py`) is
   auto-installed there by the `tool-installer` service - link to
-  `docs/tools/open-webui-tools.md`.
+  `docs/tools/open-webui-tools.md`. GitHub access comes from the `github-mcp`
+  service instead - link to `docs/tools/github-mcp.md`.
