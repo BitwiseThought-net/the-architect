@@ -118,7 +118,8 @@ Controls the global fallback behavior of the machine. Changes are applied on the
 | Key | Description | Default |
 | :--- | :--- | :--- |
 | `AI_FRAMEWORK` | Global fallback multi-agent driver if an agent does not explicitly define one. | `"crewai"` |
-| `MODEL_NAME` | The primary LLM model used by agents. | `qwen3.6:latest` |
+| `MODEL_NAME` | The primary LLM model used by agents. | `qwen3.8:latest` |
+| `EMBEDDING_MODEL` | The model used for RAG/Knowledge indexing. | `nomic-embed-text` |
 | `TEMPERATURE` | Controls LLM creativity (0.0 = deterministic). | `0.3` |
 | `MAX_TOKENS` | Maximum response length per agent call. | `4096` |
 | `MAX_RETRIES` | Number of times to retry a failed mission. If `<= 1`, a failed task puts the container into an idle heartbeat loop instead of exiting (see "Resilience & Health" below). | `3` |
