@@ -72,6 +72,9 @@ Integrations > External Tool Servers are NOT the Workspace Tools list.
   keep WEBUI_SECRET_KEY and MCPO_API_KEY identical; set a real WEBUI_SECRET_KEY
   (compose falls back to the literal "change-this-secret").
 
+- CI fix: tests/test_compose_github_mcp.py imports yaml; CI installs only
+  requirements-dev.txt, so pyyaml was added there (it was only in requirements.txt).
+
 ### Next steps
 0. User to run `docker compose up` (or `docker compose run --rm tool-installer`),
    read `docker compose logs tool-installer`, and report whether registration and
